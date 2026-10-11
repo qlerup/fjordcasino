@@ -94,7 +94,8 @@ with tempfile.TemporaryDirectory(prefix='casino-poker-test-') as data:
             for page in pages:
                 expect(page.locator('.poker-winner-label').first).to_be_visible()
                 expect(page.locator('.poker-hand-hint')).to_contain_text('Din hånd:')
-                assert page.locator('.poker-best-card').count()==5
+                hint=page.request.get(urls[0 if page==host else 1]+'/api/poker/state').json()['view']['hand_hint']
+                assert page.locator('.poker-best-card').count()==len(hint['cards'])
                 assert page.locator('.poker-seat').nth(1 if page==host else 0).locator('.poker-best-card').count()==0
             host.evaluate("window.winnerConfetti=document.querySelector('.poker-confetti')")
             # Three real polls span at least five seconds: confetti must remain.

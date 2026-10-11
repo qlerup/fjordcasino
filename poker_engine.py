@@ -33,13 +33,19 @@ def hand_hint(table,seat):
     cards=hole+board
     if len(cards)<5:
         pair=hole[0]%13==hole[1]%13
-        return {'label':'Ét par' if pair else 'Højt kort','cards':hole if pair else [max(hole,key=lambda c:c%13)],'complete':False,'plays_board':False}
+        return {'label':'Ét par' if pair else 'Ingen kombination endnu','cards':hole if pair else [],'complete':False,'plays_board':False}
     # Prefer the board when equivalent cards produce the same best hand.
     chosen=max(combinations(cards,5),key=lambda cs:(rank_five(cs),-sum(c in hole for c in cs)))
     rank=rank_five(chosen)
-    labels=('Højt kort','Ét par','To par','Tre ens','Straight','Flush','Fuldt hus','Fire ens','Straight flush')
+    labels=('Ingen kombination endnu','Ét par','To par','Tre ens','Straight','Flush','Fuldt hus','Fire ens','Straight flush')
     label='Royal flush' if rank[:2]==(8,14) else labels[rank[0]]
-    return {'label':label,'cards':list(chosen),'complete':True,'plays_board':all(c in board for c in chosen)}
+    selected=list(chosen)
+    if rank[0]==0:selected=[]
+    elif rank[0] in (1,2,3,7):
+        # Mark the made combination; leave unrelated kickers unmarked.
+        values=set(rank[1:3]) if rank[0]==2 else {rank[1]}
+        selected=[c for c in chosen if c%13+2 in values]
+    return {'label':label,'cards':selected,'complete':True,'plays_board':bool(selected) and all(c in board for c in selected)}
 
 
 def next_seat(table,after,eligible):

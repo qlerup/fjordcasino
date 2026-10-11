@@ -31,15 +31,15 @@ def test_hand_hint_matches_shared_ace_pair_and_excludes_unused_kickers():
     game['players'][1]['cards']=[30,12] # 6 clubs, ace spades
     for seat,unused in ((0,15),(1,30)):
         hint=engine.hand_hint(game,seat)
-        assert hint['label']=='Ét par' and len(hint['cards'])==5
+        assert hint['label']=='Ét par' and len(hint['cards'])==2
         assert unused not in hint['cards']
-        assert engine.rank_five(hint['cards'])==(1,14,12,10,7)
+        assert all(c%13+2==14 for c in hint['cards'])
         assert not hint['plays_board']
-    assert engine.public(game,0)['hand_hint']['cards']==[38,18,10,47,51]
+    assert engine.public(game,0)['hand_hint']['cards']==[38,51]
 
 
 @pytest.mark.parametrize('cards,label',[
-    ([12,10,8,5,14],'Højt kort'),([12,25,10,8,5],'Ét par'),
+    ([12,10,8,5,14],'Ingen kombination endnu'),([12,25,10,8,5],'Ét par'),
     ([12,25,10,23,5],'To par'),([12,25,38,8,5],'Tre ens'),
     ([12,0,1,2,16],'Straight'),([12,10,8,5,1],'Flush'),
     ([12,25,38,0,13],'Fuldt hus'),([12,25,38,51,5],'Fire ens'),
@@ -47,7 +47,10 @@ def test_hand_hint_matches_shared_ace_pair_and_excludes_unused_kickers():
 def test_hand_hint_labels_use_settlement_ranking(cards,label):
     game=table();game.update(stage='flop',board=cards[2:]);game['players'][0]['cards']=cards[:2]
     hint=engine.hand_hint(game,0)
-    assert hint['label']==label and set(hint['cards'])==set(cards)
+    assert hint['label']==label
+    category=engine.rank_five(cards)[0]
+    assert len(hint['cards'])=={0:0,1:2,2:4,3:3,7:4}.get(category,5)
+    assert set(hint['cards']).issubset(cards)
     assert hint['complete']
 
 
@@ -61,11 +64,30 @@ def test_hand_hint_playing_board_and_private_start_cards():
     assert engine.hand_hint(game,0)['label']=='Ét par'
     assert not engine.hand_hint(game,0)['complete']
     game['players'][0]['cards']=[0,25]
-    assert engine.hand_hint(game,0)['cards']==[25]
+    assert engine.hand_hint(game,0)['cards']==[]
     game['players'][0]['folded']=True
     assert engine.hand_hint(game,0) is None
     game['players'][1]['cards']=[12,38]
     assert engine.public(game,0)['players'][1]['cards']==[None,None]
+
+
+def test_no_combination_screenshots_have_no_highlights():
+    game=table();game['players'][0]['cards']=[47,16] # 10 diamonds, 5 hearts
+    game.update(stage='flop',board=[24,46,27]) # K hearts, 9 diamonds, 3 clubs
+    assert engine.hand_hint(game,0)['cards']==[]
+    assert engine.hand_hint(game,0)['label']=='Ingen kombination endnu'
+    game['players'][0]['cards']=[37,6] # K clubs, 8 spades
+    game.update(stage='turn',board=[29,41,48,14]) # 5 clubs, 4 diamonds, J diamonds, 3 hearts
+    assert engine.hand_hint(game,0)['cards']==[]
+
+
+def test_two_pairs_do_not_highlight_ace_kicker():
+    game=table();game['players'][0]['cards']=[34,6]
+    game.update(stage='turn',board=[13,26,8,38])
+    hint=engine.hand_hint(game,0)
+    assert hint['label']=='To par'
+    assert set(hint['cards'])=={34,13,26,8}
+    assert 38 not in hint['cards']
 
 
 @pytest.mark.parametrize('stacks',[(1000,1000),(1000,1000,1000),(35,70,150),(10,10)])

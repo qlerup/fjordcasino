@@ -10,7 +10,7 @@ function openPoker(){
 document.querySelectorAll('[data-nav],[data-open]').forEach(el=>el.addEventListener('click',()=>{if(el.dataset.nav!=='poker'){pokerVisible=false;$('#poker-view').classList.add('hidden');}}));
 function pokerCard(value,highlight=false){
  const el=value===null?card(null):card(Math.floor(value/13)*13+(value%13+1)%13);
- if(highlight){el.classList.add('poker-best-card');el.setAttribute('aria-label',el.textContent+' · indgår i din bedste hånd');}
+ if(highlight){el.classList.add('poker-best-card');el.setAttribute('aria-label',el.textContent+' · indgår i din kombination');}
  return el;
 }
 async function pokerRefresh(){
@@ -85,7 +85,7 @@ function renderPoker(){
  const board=element('div','card-hand');view.board.forEach(c=>board.append(pokerCard(c,highlighted.has(c))));if(!view.board.length)board.append(element('p','quiet','Fælleskort kommer efter første indsatsrunde.'));felt.append(board);
  if(hint){
   const status=element('p','poker-hand-hint','Din hånd: '+hint.label);status.setAttribute('role','status');
-  const explanation=hint.plays_board?'Bordet spiller · dine egne kort forbedrer ikke hånden.':hint.complete?'De fem markerede kort er din bedste hånd lige nu.':'Dine startkort · fælleskortene kan forbedre hånden.';
+  const explanation=!highlighted.size?'Ingen kort markeres, før du har et par eller en bedre kombination.':hint.plays_board?'Kombinationen ligger på bordet og kan bruges af alle.':'De markerede kort danner din kombination. Kickere er ikke markeret.';
   status.append(element('small','',explanation));felt.append(status);
  }
  const players=element('div','poker-players');players.style.setProperty('--seats',Math.min(3,view.players.filter(p=>!p.left).length));view.players.forEach((player,i)=>{
