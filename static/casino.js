@@ -87,6 +87,7 @@ async function recover(){
 }
 function navigate(view){
  if(state.busy)return;
+ if(view==='poker'){openPoker();return;}
  if(view==='blackjack'){openGame('blackjack');return;}
  state.game=null;$('#lobby-view').classList.toggle('hidden',view==='history');$('#history-view').classList.toggle('hidden',view!=='history');$('#game-view').classList.add('hidden');
  document.querySelectorAll('[data-nav]').forEach(el=>el.classList.toggle('active',el.dataset.nav===view));

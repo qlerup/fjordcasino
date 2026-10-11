@@ -12,3 +12,16 @@
 .color-bets button.selected{box-shadow:inset 0 0 0 2px #f3d991}
 .color-bets button:hover{outline:2px solid #f0d99c;outline-offset:1px}
 .outside-bets{grid-template-columns:repeat(5,minmax(0,1fr))}
+
+.poker-setup,.poker-invitation{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;margin:24px 0;display:grid;gap:16px}
+.poker-connect{display:flex;align-items:end;gap:14px;flex-wrap:wrap}.poker-connect label{flex:1;min-width:160px}
+.poker-setup input,.poker-invitation input,.poker-invitation textarea,.poker-controls input{display:block;width:100%;margin-top:8px;background:#10211e;color:#fff;border:1px solid #587364;border-radius:7px;padding:12px;font:inherit}
+.poker-invitation textarea{font-size:12px;resize:vertical;min-height:72px;overflow-wrap:anywhere}
+.poker-felt{border:2px solid #b99966;border-radius:28px;background:#254434;padding:28px;margin:25px 0}
+.poker-felt>h2,.poker-pot{text-align:center}.poker-pot{color:#efd594;font-size:20px}
+.poker-players{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:28px 0}
+.poker-seat{padding:18px 10px;text-align:center;border:1px solid #6a826b;border-radius:12px;background:#173228}
+.poker-seat.active{border:2px solid #efcc7d}.poker-seat.folded{opacity:.6}.poker-seat p{font-size:12px;color:#c8d7c8}.poker-seat .playing-card{width:50px;height:75px;font-size:17px;padding:6px}.poker-seat .playing-card>span{font-size:25px}
+.poker-controls{display:flex;gap:10px;align-items:end;justify-content:center;flex-wrap:wrap}.poker-controls label{font-size:12px;width:120px}.poker-felt>.quiet{font-size:12px;text-align:center;margin-top:20px;line-height:1.7}.poker-error{color:#f2b7a4;padding:14px;border:1px solid #c08068;border-radius:8px}
+@media(max-width:560px){.nav-item{width:16.6667%;font-size:7px}.poker-felt{padding:15px 9px;border-radius:16px}.poker-players{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.poker-seat{padding:12px 5px}.poker-seat strong{font-size:12px}.poker-setup,.poker-invitation{padding:17px}.poker-felt>.card-hand .playing-card{width:46px;height:70px;font-size:17px;padding:5px}.poker-felt>.card-hand .playing-card>span{font-size:23px}.poker-controls .button{font-size:12px;padding:12px}}
+#poker-view > .back-button { display: block; }

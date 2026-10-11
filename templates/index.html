@@ -5,8 +5,9 @@
   <meta name="theme-color" content="#101b20"><meta name="csrf-token" content="{{ session.csrf }}">
   <title>FjordCasino · Ren spilleglæde</title>
   <link rel="icon" href="{{ url_for('static',filename='icon.svg') }}" type="image/svg+xml">
-  <link rel="stylesheet" href="{{ url_for('static',filename='casino.css',v='1.1.0') }}">
-  <script src="{{ url_for('static',filename='casino.js',v='1.1.0') }}" defer></script>
+  <link rel="stylesheet" href="{{ url_for('static',filename='casino.css',v='1.2.0') }}">
+  <script src="{{ url_for('static',filename='casino.js',v='1.2.0') }}" defer></script>
+  <script src="{{ url_for('static',filename='poker.js',v='1.2.0') }}" defer></script>
 <link rel="apple-touch-icon" href="{{ url_for('static',filename='logos/apple-touch-icon.png') }}"><link rel="manifest" href="{{ url_for('static',filename='site.webmanifest') }}"><link rel="icon" sizes="32x32" href="{{ url_for('static',filename='logos/icon-32.png') }}"></head>
 <body>
 <aside class="sidebar">
@@ -17,6 +18,7 @@
     <button data-nav="slots" class="nav-item"><span>▥</span> Spilleautomater <em>3</em></button>
     <button data-nav="roulette" class="nav-item"><span>◎</span> Roulette <em>2</em></button>
     <button data-nav="blackjack" class="nav-item"><span>♠</span> Blackjack</button>
+    <button data-nav="poker" class="nav-item"><span>♣</span> Poker</button>
     <div class="nav-divider"></div>
     <button data-nav="history" class="nav-item"><span>↺</span> Min spilhistorik</button>
     <button id="rules-open" class="nav-item"><span>ⓘ</span> Sådan spiller du</button>
@@ -32,6 +34,7 @@
       <section class="daily-strip" aria-label="Mønter mens du er her"><div class="gift-icon">✧</div><div><strong>Lidt ekstra til næste runde.</strong><p>Du får 500 mønter for hvert kvarter med kasinoet åbent og synligt. Tiden pauses, når du går.</p></div><div class="daily-status"><span class="tiny-label">HVERT KVARTER</span><strong>+500 <span class="coin small">F</span></strong><small id="daily-label">Henter din optjening …</small></div></section>
       <div class="section-heading"><div><span class="eyebrow">FIND DIN FAVORIT</span><h2>Hvad har du lyst til at spille?</h2></div><div class="filter-tabs" role="group" aria-label="Filtrer spil"><button class="active" data-filter="all">Alle spil</button><button data-filter="slots">Slots</button><button data-filter="roulette">Roulette</button><button data-filter="blackjack">Blackjack</button></div></div>
       <div class="game-grid" id="game-grid">
+        <button class="game-card blackjack-card" data-category="poker" data-nav="poker"><div class="card-art"><div class="playing-card art-card-one">A<span>♠</span></div><div class="playing-card art-card-two">A<span>♥</span></div><span class="art-caption">ET BORD. DINE VENNER.</span></div><div class="card-info"><div><small>TEXAS HOLD’EM · 2–6 SPILLERE</small><h3>Vennernes pokerbord</h3><p>Spil sammen på tværs af installationer.</p></div><span class="card-arrow">↗</span></div></button>
         <button class="game-card duck-card" data-category="slots" data-open="slot:duck"><div class="card-art"><span class="card-badge">FJORD FAVORIT</span><div class="card-ducks"><i data-symbol="duck-mallard"></i><i data-symbol="duck-yellow"></i><i data-symbol="duck-pink"></i></div><span class="art-caption">RAP, RAP … JACKPOT!</span></div><div class="card-info"><div><small>SPILLEAUTOMAT · 3 LINJER</small><h3>Andedammen</h3><p>Fem ænder. Masser af muligheder.</p></div><span class="card-arrow">↗</span></div></button>
         <button class="game-card cosmic-card" data-category="slots" data-open="slot:cosmic"><div class="card-art"><div class="space-stars">✧ <span>✦</span> ✧</div><div class="planet-art">🪐</div><span class="art-caption">HELT UDE I RUMMET</span></div><div class="card-info"><div><small>SPILLEAUTOMAT · 3 LINJER</small><h3>Stjernestøv</h3><p>En lille tur blandt stjernerne.</p></div><span class="card-arrow">↗</span></div></button>
         <button class="game-card fruit-card" data-category="slots" data-open="slot:fruit"><div class="card-art"><div class="fruit-art">🍋<span>🍒</span>🍇</div><span class="art-caption">FRISK FRA HJULENE</span></div><div class="card-info"><div><small>SPILLEAUTOMAT · 3 LINJER</small><h3>Frugtfesten</h3><p>Den saftige, farverige klassiker.</p></div><span class="card-arrow">↗</span></div></button>
@@ -43,6 +46,7 @@
     </section>
     <section id="game-view" class="view hidden"><button class="back-button" data-nav="lobby">← Tilbage til lobbyen</button><div class="game-heading"><div><span class="eyebrow" id="game-kicker"></span><h1 id="game-title"></h1></div><button class="button secondary" id="game-rules">Spilleregler ⓘ</button></div><div id="game-content"></div></section>
     <section id="history-view" class="view hidden"><span class="eyebrow">DIT KASINO</span><h1>Min spilhistorik</h1><p class="quiet">Dine seneste 50 bevægelser — alle beløb er virtuelle mønter.</p><div class="stats-grid" id="stats"></div><div class="history-wrap"><table><thead><tr><th>Aktivitet</th><th>Tidspunkt</th><th>Mønter</th><th>Saldo efter</th></tr></thead><tbody id="history-rows"></tbody></table></div></section>
+    <section id="poker-view" class="view hidden"><button class="back-button" data-nav="lobby">← Tilbage til lobbyen</button><span class="eyebrow">TEXAS HOLD’EM · 2–6 VENNER</span><h1>Vennernes pokerbord</h1><p class="quiet">Indskud: 1.000 mønter fra din saldo. Blinds: 10 / 20. Værten skal kunne nås af de andre installationer.</p><div id="poker-content"></div></section>
     <footer><span>FJORD<span class="brand-light">CASINO</span></span><p>Spil for sjov. Mønter kan hverken købes, sælges eller udbetales.</p><span>Et lille frikvarter fra hverdagen ✦</span></footer>
   </main>
 </div>

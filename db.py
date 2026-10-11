@@ -20,7 +20,7 @@ def connect(path):
 
 def initialize(path):
     with connect(path) as db:
-        if db.execute('PRAGMA user_version').fetchone()[0] > 2:
+        if db.execute('PRAGMA user_version').fetchone()[0] > 3:
             raise RuntimeError('Database schema is newer than this application')
         db.execute('PRAGMA journal_mode=WAL')
         db.executescript('''
@@ -58,5 +58,18 @@ def initialize(path):
           user_id INTEGER NOT NULL REFERENCES users(id), tab_id TEXT NOT NULL,
           last_seen REAL NOT NULL, PRIMARY KEY(user_id,tab_id)
         );
-        PRAGMA user_version=2;
+        CREATE TABLE IF NOT EXISTS poker_tables (
+          id TEXT PRIMARY KEY, owner INTEGER NOT NULL REFERENCES users(id),
+          invite_hash TEXT NOT NULL UNIQUE, state TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS poker_members (
+          token_hash TEXT PRIMARY KEY, table_id TEXT NOT NULL REFERENCES poker_tables(id),
+          seat INTEGER NOT NULL, cashout INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS poker_escrow (
+          id TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id),
+          status TEXT NOT NULL, connection TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS poker_active ON poker_escrow(user_id) WHERE status!='settled';
+        PRAGMA user_version=3;
         ''')

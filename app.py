@@ -135,7 +135,7 @@ def create_app(config=None):
 
     @app.before_request
     def protect():
-        if request.endpoint in ('health','static'): return
+        if request.endpoint in ('health','static','poker_peer'): return
         session.setdefault('csrf',secrets.token_urlsafe(32))
         if request.method in ('POST','PUT','PATCH','DELETE'):
             token = request.form.get('csrf','') if request.endpoint == 'login' else request.headers.get('X-CSRF-Token','')
@@ -258,7 +258,7 @@ def create_app(config=None):
     @app.get('/api/health')
     def health():
         with connect(path) as db: db.execute('SELECT 1 FROM users LIMIT 1')
-        return jsonify(ok=True,app='fjordcasino',version='1.1.0')
+        return jsonify(ok=True,app='fjordcasino',version='1.2.0')
 
     @app.get('/')
     def index(): return render_template('index.html', username=g.user['username'])
@@ -323,6 +323,8 @@ def create_app(config=None):
             db.execute('INSERT INTO actions VALUES(?,?,?,?,?)',(uid,request_id,fingerprint,json.dumps(result),stamp()))
         return jsonify(result)
 
+    from poker_service import install
+    install(app,credit)
     return app
 
 

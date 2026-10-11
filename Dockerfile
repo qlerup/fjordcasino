@@ -5,7 +5,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
     && useradd --uid 10001 --create-home casino \
     && mkdir /data && chown casino:casino /data
-COPY --chown=casino:casino app.py db.py games.py wsgi.py ./
+COPY --chown=casino:casino app.py db.py games.py wsgi.py poker_engine.py poker_service.py ./
 COPY --chown=casino:casino static ./static
 COPY --chown=casino:casino templates ./templates
 USER casino

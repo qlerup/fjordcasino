@@ -5,6 +5,7 @@ Et dansk hyggekasino til FjordHub med virtuelle mønter. Ingen indbetaling, køb
 - Andedammen, Stjernestøv og Frugtfesten: tre spilleautomater med tre vandrette gevinstlinjer.
 - Roulette Royale og Anderoulette: europæisk roulette med ét nul.
 - Blackjack Club: seks kortspil, dealer står på alle 17, blackjack 3:2, mulighed for fordobling. Ingen split eller forsikring.
+- Texas Hold’em mod 2–6 venner, også på tværs af installationer. Indskud og gevinster bruger den almindelige saldo.
 - 10.000 startmønter og 500 for hver 15 minutters tilstedeværelse med kasinoet åbent og synligt. Delvise kvarterer gemmes; offline tid og skjulte faner giver ingen optjening. Flere faner tæller ikke dobbelt.
 - Personlig saldo, seneste 50 bevægelser og gemt blackjackhånd. Spil afgøres og afregnes på serveren, i én databasetransaktion. Runde-id beskytter mod dobbelt afregning.
 
@@ -36,7 +37,7 @@ git pull --ff-only
 docker compose up -d --build
 ```
 
-FjordHub-installationer opdateres gennem FjordHub. Skemaversion 2 opretter tabeller uden at slette data. Ved rollback bruges en tidligere kodeversion sammen med dens kompatible backup; genindlæsning af en backup mister runder spillet siden backup. `docker compose down` bevarer bind-mappens data.
+FjordHub-installationer opdateres gennem FjordHub. Skemaversion 3 opretter tabeller uden at slette data. Ved rollback bruges en tidligere kodeversion sammen med dens kompatible backup; genindlæsning af en backup mister runder spillet siden backup. `docker compose down` bevarer bind-mappens data.
 
 ## Lokal udvikling og test
 
@@ -58,3 +59,21 @@ Browserprøverne starter deres egen server og bruger midlertidige data og syntet
 Ved første login efter denne opdatering nulstilles hver spillers saldo til 10.000, og gammel spilhistorik, runde-id’er og igangværende blackjackhånd ryddes. Konto og adgangskode bevares. En permanent markering pr. spiller forhindrer yderligere nulstillinger ved login, genstart eller senere opdateringer. Gamle sessioner skal logge ind igen. Databasen røres først for den enkelte spiller ved login. Tag backup før opdateringen, hvis den gamle saldo/historik skal bevares.
 
 Tilstedeværelse registreres med et signal fra hver synlig fane hvert 20. sekund. Ved skjul/lukning pauses fanen. Udebliver signaler i mere end 45 sekunder, medregnes hullet ikke. Det er browserbaseret tilstedeværelse og kan ikke bevise, at et menneske sidder ved skærmen.
+
+
+## Poker med venner
+
+1. Begge installationer opdateres til mindst 1.2.0. Log ind og vælg **Poker**.
+2. Værten vælger **Opret bord**. 1.000 mønter reserveres fra værtens saldo.
+3. Kontrollér adressen over vennekoden. Brug værtens offentlige HTTPS-domæne, når en ven er udenfor lokalnettet. På samme netværk bruges for eksempel `http://192.168.1.110:8070`.
+4. Del hele `FC1.…`-vennekoden. Vennen indsætter den i sin egen installation og vælger **Forbind**. Hans 1.000 mønter reserveres på hans installation.
+5. Værten starter hånden. Der er 2–6 pladser, blinds 10/20, check, kald, fold, hæv og all-in. Bedste fem af syv kort vinder; sidepuljer og delte puljer understøttes. Manglende handling i 60 sekunder giver automatisk fold, når bordet opdateres.
+6. Vælg **Forlad bordet** for at føre dine resterende jetoner tilbage til din egen saldo. Under en hånd foldes dine kort, og afregning afventer afslutningen. Hvis værten forlader bordet, overtager næste spiller retten til at starte hænder.
+
+Din makkers installation behøver ingen offentlig adresse, når din installation er den tilgængelige vært. Hans server forbinder ud til din via `/api/poker/peer`. Ingen indgående forbindelse til hans installation er nødvendig. Værtens adresse skal kunne nås fra gæstecontaineren; en privat LAN-adresse virker kun på samme net eller gennem en eksisterende VPN. DNS/HTTPS og eventuelle adgangsregler hos din reverse proxy skal tillade denne API-adgang. Der kræves ikke FjordHub-login på peer-endpointet; adgang styres af bordets hemmelige vennekode og separate spillertokens.
+
+Indskud, spilleadgang, bordets tilstand og afregningskvitteringer gemmes i SQLite. Et mistet svar ved tilslutning eller tilbageførsel kan efterprøves uden nyt indskud eller dobbelt udbetaling. **Hent eksisterende forbindelse** genoptager et afventende indskud. Et fuldt bord returnerer indskuddet med en gemt kvittering. Ved varig utilgængelighed af værten forbliver indskuddet reserveret, indtil bordet kan kontaktes igen; det refunderes ikke uden en afregningskvittering.
+
+Spil kun med en betroet vært. Værtsinstallationen har serverens kort og beregner resultater; dette er et vennebord med virtuelle mønter, ikke et tillidsløst eller certificeret pokernetværk. Peer-adresser med loopback, link-local, indlejrede loginoplysninger eller redirects accepteres ikke. Private LAN-adresser er med vilje tilladt.
+
+Pokerprøven `python tests/browser_poker.py` starter to uafhængige installationer på maskinens LAN-adresse, spiller en hel hånd i to Chromium-kontekster og verificerer begge saldi. Prøvedata fjernes bagefter. Liveforbindelsen mellem jeres to konkrete installationer er endnu ikke efterprøvet.
