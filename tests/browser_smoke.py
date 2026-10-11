@@ -38,7 +38,12 @@ with tempfile.TemporaryDirectory(prefix='fjordcasino-browser-') as data:
                     page.get_by_role('button',name='Tilbage til lobbyen').click()
                 for table in ('classic','duck'):
                     page.locator(f'.game-card[data-open="roulette:{table}"]').click()
-                    page.locator('[data-bet="color:red"]').click()
+                    page.get_by_role('button',name='Grøn (0)',exact=True).click()
+                    expect(page.locator('.roulette-board [data-bet="number:0"] .board-badge')).to_have_text('20')
+                    page.get_by_role('button',name='Sort',exact=True).click()
+                    expect(page.locator('#roulette-slip')).to_contain_text('40 mønter')
+                    page.get_by_role('button',name='Ryd bordet').click()
+                    page.get_by_role('button',name='Rød',exact=True).click()
                     page.get_by_role('button',name='Drej hjulet').click()
                     expect(page.locator('#game-result')).to_contain_text('Kuglen landede')
                     expect(page.get_by_role('button',name='Drej hjulet')).to_be_enabled()
