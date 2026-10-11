@@ -63,7 +63,7 @@ with tempfile.TemporaryDirectory(prefix='casino-poker-test-') as data:
             for _ in range(2):
                 with host.expect_response(lambda response: response.url.endswith('/api/poker/state')):
                     pass
-                host.wait_for_function('!pokerBusy')
+                host.wait_for_function('() => !pokerBusy')
             assert host.evaluate('''() => window.stableFelt===document.querySelector('.poker-felt')
                 && window.stableCard===document.querySelector('.poker-felt .playing-card')
                 && window.pokerMutations===0 && window.scrollY===window.stableScroll
@@ -102,7 +102,7 @@ with tempfile.TemporaryDirectory(prefix='casino-poker-test-') as data:
             for _ in range(3):
                 with host.expect_response(lambda response: response.url.endswith('/api/poker/state')):
                     pass
-                host.wait_for_function('!pokerBusy')
+                host.wait_for_function('() => !pokerBusy')
             assert host.evaluate("window.winnerConfetti===document.querySelector('.poker-confetti') && getComputedStyle(window.winnerConfetti.firstChild).animationIterationCount==='infinite'")
             for width in (320,561,850,1100):
                 host.set_viewport_size({'width':width,'height':1000})
