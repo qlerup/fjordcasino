@@ -78,6 +78,7 @@ def install(app,credit):
                     engine.start(table)
                 else:engine.act(table,seat,payload.get('action'),payload.get('amount'))
             elif op=='leave':
+                p['withdrawing']=True
                 if table['stage'] not in ('waiting','finished') and p.get('in_hand') and not p.get('folded'):
                     p['folded']=True;table['revision']+=1;engine.advance(table)
                 if table['stage'] not in ('waiting','finished') and p.get('in_hand'):
@@ -187,4 +188,3 @@ def install(app,credit):
         if op=='leave':
             with connect(path) as db:db.execute("UPDATE poker_escrow SET status='leaving' WHERE user_id=? AND status='active'",(g.user['id'],))
         return jsonify(sync(g.user['id'],op,{key:body[key] for key in ('action','amount','revision') if key in body}))
-

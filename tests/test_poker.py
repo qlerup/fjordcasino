@@ -216,3 +216,22 @@ def test_leave_pending_join_preserves_retry_after_lost_cashout(pair,monkeypatch)
     assert post(guest,'action',{'op':'leave'}).status_code==400
     assert guest.get('/api/poker/state').json=={'connected':False,'returned':1000}
     assert guest.get('/api/state').json['user']['balance']==10000
+
+
+def test_waiting_cashout_player_is_not_seated_in_next_hand(pair):
+    _,_,host,guest,peer,_=pair;code=join(pair)
+    third=peer.post('/api/poker/peer',json={'op':'join','token':code,'join_id':'f'*32,'name':'Third','buyin':1000}).json
+    view=host.get('/api/poker/state').json['view']
+    post(host,'action',{'op':'start','revision':view['revision']})
+    assert post(guest,'action',{'op':'leave'}).json['leaving']
+    for _ in range(30):
+        view=host.get('/api/poker/state').json['view']
+        if view['stage']=='finished':break
+        body={'op':'action','action':'call','revision':view['revision']}
+        response=post(host,'action',body) if view['turn']==view['seat'] else peer.post('/api/poker/peer',json={**body,'token':third['token']})
+        assert response.status_code==200
+    assert view['stage']=='finished'
+    started=post(host,'action',{'op':'start','revision':view['revision']})
+    assert started.status_code==200
+    assert started.json['view']['players'][1]['cards']==[]
+    assert guest.get('/api/poker/state').json['connected'] is False

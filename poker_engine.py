@@ -33,7 +33,7 @@ def next_seat(table,after,eligible):
     return None
 
 
-def ready(p):return not p.get('left') and p['stack']>0
+def ready(p):return not p.get('left') and not p.get('withdrawing') and p['stack']>0
 def live(p):return p.get('in_hand') and not p.get('folded')
 def movable(p):return live(p) and p['stack']>0
 
