@@ -92,7 +92,7 @@ function renderPoker(){
   if(player.left)return;const seat=element('div','poker-seat'+(view.turn===i?' active':'')+(player.folded?' folded':'')+(view.winners.includes(i)?' winner':''));
   seat.append(element('strong','',player.name+(i===view.seat?' (dig)':'')+(i===view.dealer?' · D':'')),element('p','',money(player.stack)+' jetoner · satset '+money(player.bet)));
   const cards=element('div','card-hand');player.cards.forEach(c=>cards.append(pokerCard(c,i===view.seat&&highlighted.has(c))));seat.append(cards);
-  if(player.folded)seat.append(element('span','','Foldet'));if(view.winners.includes(i))seat.append(element('strong','poker-winner-label',view.winners.length>1?'Vinder af en pulje':'Vinder af hånden'));players.append(seat);
+  if(player.folded)seat.append(element('span','','Foldet'));if(view.winners.includes(i))seat.append(element('strong','poker-winner-label',player.win_description||(view.winners.length>1?'Vinder af en pulje':'Vinder af hånden')));players.append(seat);
  });felt.append(players);
  const controls=element('div','poker-controls');const send=(action,amount)=>pokerRequest('/api/poker/action',{op:'action',action,amount,revision:view.revision});
  if(view.turn===view.seat&&!pokerData.leaving){

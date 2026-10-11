@@ -90,6 +90,37 @@ def test_two_pairs_do_not_highlight_ace_kicker():
     assert 38 not in hint['cards']
 
 
+def test_winning_straight_is_described_identically_for_both_players():
+    game=table((0,0));game.update(stage='river',board=[47,33,43,32,49],dealer=0)
+    for p,cards in zip(game['players'],([26,44],[45,23])):
+        p.update(cards=cards,in_hand=True,folded=False,total=100)
+    assert engine.winner_description(game,0) is None
+    engine.settle(game)
+    assert game['winners']==[0]
+    for seat in (0,1):
+        result=engine.public(game,seat)
+        assert result['players'][0]['win_description']=='Vandt med straight'
+        assert result['players'][1]['win_description'] is None
+
+
+def test_win_description_after_fold_does_not_disclose_winners_hand_type():
+    game=table((1000,1000));engine.start(game,now=0)
+    loser=game['turn'];engine.act(game,loser,'fold',now=1)
+    winner=game['winners'][0]
+    for seat in (0,1):
+        assert engine.public(game,seat)['players'][winner]['win_description']=='Vandt — de andre foldede'
+
+
+def test_high_card_win_is_distinct_from_no_made_combination_hint():
+    game=table((0,0));game.update(stage='river',board=[0,16,31,9,11],dealer=0)
+    for p,cards in zip(game['players'],([12,20],[1,21])):
+        p.update(cards=cards,in_hand=True,folded=False,total=100)
+    engine.settle(game)
+    assert game['winners']==[0]
+    assert engine.hand_hint(game,0)['label']=='Ingen kombination endnu'
+    assert engine.winner_description(game,0)=='Vandt med højt kort'
+
+
 @pytest.mark.parametrize('stacks',[(1000,1000),(1000,1000,1000),(35,70,150),(10,10)])
 def test_hands_conserve_coins_and_keep_cards_private(stacks):
     for seed in range(10):

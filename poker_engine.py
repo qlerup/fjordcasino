@@ -26,6 +26,20 @@ def rank_five(cards):
 def best_hand(cards):return max(rank_five(list(c)) for c in combinations(cards,5))
 
 
+def hand_name(rank):
+    labels=('Højt kort','Ét par','To par','Tre ens','Straight','Flush','Fuldt hus','Fire ens','Straight flush')
+    return 'Royal flush' if rank[:2]==(8,14) else labels[rank[0]]
+
+
+def winner_description(table,seat):
+    if table['stage']!='finished' or seat not in table.get('winners',[]):return None
+    if sum(live(p) for p in table['players'])==1:return 'Vandt — de andre foldede'
+    player=table['players'][seat]
+    rank=best_hand(player['cards']+table['board'])
+    prefix='Vandt en pulje med ' if len(table['winners'])>1 else 'Vandt med '
+    return prefix+hand_name(rank).lower()
+
+
 def hand_hint(table,seat):
     """Describe only this player's known cards, using the settlement ranking."""
     player=table['players'][seat];hole=player.get('cards',[]);board=table.get('board',[])
@@ -37,8 +51,7 @@ def hand_hint(table,seat):
     # Prefer the board when equivalent cards produce the same best hand.
     chosen=max(combinations(cards,5),key=lambda cs:(rank_five(cs),-sum(c in hole for c in cs)))
     rank=rank_five(chosen)
-    labels=('Ingen kombination endnu','Ét par','To par','Tre ens','Straight','Flush','Fuldt hus','Fire ens','Straight flush')
-    label='Royal flush' if rank[:2]==(8,14) else labels[rank[0]]
+    label=hand_name(rank) if rank[0] else 'Ingen kombination endnu'
     selected=list(chosen)
     if rank[0]==0:selected=[]
     elif rank[0] in (1,2,3,7):
@@ -172,4 +185,5 @@ def public(table,seat):
             'hand_id':table.get('hand_id',0),'events':table.get('events',[]),
             'hand_hint':hand_hint(table,seat),
             'players':[{'name':v['name'],'stack':v['stack'],'bet':v.get('bet',0),'folded':v.get('folded',False),'left':v.get('left',False),
+                       'win_description':winner_description(table,i),
                        'cards':v.get('cards',[]) if i==seat or table['stage']=='finished' and live(v) else [None]*len(v.get('cards',[]))} for i,v in enumerate(table['players'])]}
