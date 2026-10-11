@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory(prefix='fjordcasino-browser-') as data:
                 page.get_by_label('Brugernavn').fill('Browser'+str(width))
                 page.get_by_label('Adgangskode').fill('synthetic-browser-password')
                 page.get_by_role('button',name='Opret en spiller').click()
-                expect(page.locator('#balance')).to_have_text('6.000')
+                expect(page.locator('#balance')).to_have_text('10.000')
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                 page.screenshot(path=str(out/f'lobby-{width}.png'),full_page=True)
                 for machine in ('duck','cosmic','fruit'):

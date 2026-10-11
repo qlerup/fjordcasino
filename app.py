@@ -81,11 +81,32 @@ def create_app(config=None):
                    (uid,kind,amount,balance,description,stamp()))
         return balance
 
-    def daily(db, uid):
-        day = clock().astimezone(zone).date().isoformat()
-        added = db.execute('INSERT OR IGNORE INTO daily_rewards VALUES(?,?)', (uid,day)).rowcount
-        if added: credit(db,uid,1000,'daily','Dagens 1.000 mønter')
-        return bool(added)
+    def reset_once(db, uid):
+        row = db.execute('SELECT reset_version FROM coin_rewards WHERE user_id=?', (uid,)).fetchone()
+        if row and row['reset_version'] == 2:
+            return
+        for table in ('ledger', 'actions', 'blackjack', 'daily_rewards', 'coin_presence'):
+            db.execute(f'DELETE FROM {table} WHERE user_id=?', (uid,))
+        db.execute('UPDATE users SET balance=0 WHERE id=?', (uid,))
+        credit(db,uid,10000,'welcome','Ny start · 10.000 mønter')
+        db.execute('INSERT OR REPLACE INTO coin_rewards VALUES(?,?,?,?)', (uid,2,0,None))
+
+    def reward(db, uid):
+        now = clock().timestamp()
+        db.execute('DELETE FROM coin_presence WHERE user_id=? AND last_seen<?', (uid,now-45))
+        active = bool(db.execute('SELECT 1 FROM coin_presence WHERE user_id=? LIMIT 1', (uid,)).fetchone())
+        row = db.execute('SELECT active_seconds,last_seen FROM coin_rewards WHERE user_id=?', (uid,)).fetchone()
+        elapsed = now-row['last_seen'] if row['last_seen'] is not None else 0
+        # Heartbeats arrive every 20 seconds. A missing heartbeat breaks the
+        # presence interval; time offline is never backfilled on return.
+        seconds = row['active_seconds']+(elapsed if 0 <= elapsed <= 45 else 0)
+        periods = int(seconds // 900)
+        if periods:
+            credit(db,uid,periods*500,'reward',f'{periods} kvarter · {periods*500:,} mønter'.replace(',', '.'))
+        seconds -= periods*900
+        db.execute('UPDATE coin_rewards SET active_seconds=?,last_seen=? WHERE user_id=?', (seconds,now if active else None,uid))
+        return {'amount':500,'interval_seconds':900,'awarded':periods*500,'version':2,
+                'remaining_seconds':900-seconds,'active':active}
 
     def establish(identity, username, password=None):
         with connect(path) as db:
@@ -94,12 +115,12 @@ def create_app(config=None):
             if not row:
                 uid = db.execute('INSERT INTO users(identity,username,password,created_at) VALUES(?,?,?,?)',
                                  (identity,username,password,stamp())).lastrowid
-                credit(db,uid,5000,'welcome','Velkommen til FjordCasino')
             else:
                 uid = row['id']; db.execute('UPDATE users SET username=? WHERE id=?', (username,uid))
-            daily(db, uid)
+            reset_once(db, uid)
+            reward(db, uid)
         session.clear()
-        session.update(uid=uid, csrf=secrets.token_urlsafe(32), login_at=time.time())
+        session.update(uid=uid, csrf=secrets.token_urlsafe(32), login_at=time.time(), wallet_version=2)
         session.permanent = True
 
     def establish_hub(user):
@@ -126,7 +147,7 @@ def create_app(config=None):
         if request.endpoint in ('health','static','login','hub_login'): return
         with connect(path) as db:
             g.user = db.execute('SELECT id,identity,username,balance FROM users WHERE id=?', (session.get('uid'),)).fetchone()
-        if g.user and time.time()-session.get('login_at',0) < 43200:
+        if g.user and session.get('wallet_version') == 2 and time.time()-session.get('login_at',0) < 43200:
             if managed and time.time()-session.get('hub_checked',0) > 60:
                 result = hub_api('/api/hub/apps/users')
                 if not result.get('ok'):
@@ -191,7 +212,6 @@ def create_app(config=None):
                                 cursor = db.execute('INSERT OR IGNORE INTO users(identity,username,password,created_at) VALUES(?,?,?,?)',
                                     (identity,username,generate_password_hash(password),stamp()))
                                 if not cursor.rowcount: raise games.GameError('Brugernavnet er optaget.')
-                                credit(db,cursor.lastrowid,5000,'welcome','Velkommen til FjordCasino')
                             establish(identity,username); return redirect('/')
                     elif user and user['password'] and check_password_hash(user['password'],password):
                         establish(identity,user['username']); return redirect('/')
@@ -209,7 +229,28 @@ def create_app(config=None):
 
     @app.post('/api/logout')
     def logout():
+        with connect(path) as db:
+            db.execute('BEGIN IMMEDIATE')
+            db.execute('DELETE FROM coin_presence WHERE user_id=?', (g.user['id'],))
+            reward(db,g.user['id'])
         session.clear(); return jsonify(ok=True)
+
+    @app.post('/api/presence')
+    def presence():
+        body = request.get_json(silent=True)
+        if (not isinstance(body,dict) or type(body.get('active')) is not bool
+                or not isinstance(body.get('tab_id'),str) or not re.fullmatch('[a-f0-9]{32}',body['tab_id'])):
+            raise games.GameError('Ugyldig tilstedeværelse.')
+        with connect(path) as db:
+            db.execute('BEGIN IMMEDIATE')
+            uid = g.user['id']
+            if body['active']:
+                db.execute('INSERT OR REPLACE INTO coin_presence VALUES(?,?,?)', (uid,body['tab_id'],clock().timestamp()))
+            else:
+                db.execute('DELETE FROM coin_presence WHERE user_id=? AND tab_id=?', (uid,body['tab_id']))
+            rewards = reward(db,uid)
+            balance = db.execute('SELECT balance FROM users WHERE id=?', (g.user['id'],)).fetchone()[0]
+        return jsonify(rewards=rewards,balance=balance)
 
     @app.get('/api/auth/hub-access')
     def access(): return jsonify(authenticated=True)
@@ -217,7 +258,7 @@ def create_app(config=None):
     @app.get('/api/health')
     def health():
         with connect(path) as db: db.execute('SELECT 1 FROM users LIMIT 1')
-        return jsonify(ok=True,app='fjordcasino',version='1.0.0')
+        return jsonify(ok=True,app='fjordcasino',version='1.1.0')
 
     @app.get('/')
     def index(): return render_template('index.html', username=g.user['username'])
@@ -226,14 +267,12 @@ def create_app(config=None):
     def state():
         with connect(path) as db:
             db.execute('BEGIN IMMEDIATE')
-            awarded = daily(db,g.user['id'])
+            rewards = reward(db,g.user['id'])
             user = dict(db.execute('SELECT id,username,balance FROM users WHERE id=?',(g.user['id'],)).fetchone())
             history = [dict(row) for row in db.execute('SELECT kind,amount,balance,description,created_at FROM ledger WHERE user_id=? ORDER BY id DESC LIMIT 50',(g.user['id'],))]
             row = db.execute('SELECT state FROM blackjack WHERE user_id=?',(g.user['id'],)).fetchone()
             stats = dict(db.execute("SELECT count(CASE WHEN kind='bet' THEN 1 END) AS rounds, coalesce(sum(CASE WHEN kind='payout' THEN amount ELSE 0 END),0) AS won, coalesce(max(CASE WHEN kind='payout' THEN amount ELSE 0 END),0) AS biggest FROM ledger WHERE user_id=?",(g.user['id'],)).fetchone())
-        now = clock().astimezone(zone)
-        tomorrow = datetime.combine(now.date()+timedelta(days=1),datetime.min.time(),tzinfo=zone)
-        return jsonify(user=user, history=history, stats=stats, daily={'amount':1000,'awarded':awarded,'next_at':tomorrow.isoformat()},
+        return jsonify(user=user, history=history, stats=stats, rewards=rewards,
                        blackjack=games.public_blackjack(json.loads(row['state'])) if row else None)
 
     @app.post('/api/play/<game>')
@@ -252,7 +291,7 @@ def create_app(config=None):
                 if previous['fingerprint'] != fingerprint:
                     return jsonify(error='Dette runde-id er allerede brugt.'),409
                 return jsonify(json.loads(previous['response']))
-            daily(db,uid)
+            reward(db,uid)
             if game == 'slots':
                 result = games.spin_slots(body.get('machine'),body.get('bet'))
                 name = games.SLOTS[body['machine']]['name']

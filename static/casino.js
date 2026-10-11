@@ -35,10 +35,26 @@ async function api(path,body) {
  if(!response.ok){const err=new Error(data.error||'Forespørgslen blev afvist.');err.definitive=response.status<500;throw err;}
  return data;
 }
-function pendingKey(){return 'fjordcasino-round-'+state.data.user.id;}
+function pendingKey(){return 'fjordcasino-round-v2-'+state.data.user.id;}
 function loadPending(){try{const p=JSON.parse(sessionStorage.getItem(pendingKey()));if(p&&['slots','roulette','blackjack'].includes(p.game)&&p.body&&typeof p.body.request_id==='string')state.pending=p;}catch{/* Storage may be disabled. */}}
 function rememberPending(){try{if(state.pending)sessionStorage.setItem(pendingKey(),JSON.stringify(state.pending));else sessionStorage.removeItem(pendingKey());}catch{/* Server idempotency still protects retries during this page visit. */}}
-function renderState(data){state.data=data;$('#balance').textContent=money(data.user.balance);$('#daily-label').textContent='Dagens mønter er på din saldo';renderHistory();}
+function renderState(data){state.data=data;$('#balance').textContent=money(data.user.balance);updateReward(data.rewards);renderHistory();}
+const presenceTab=id();
+let rewardRemaining=900,rewardUpdated=Date.now(),rewardActive=false,presenceBusy=false;
+function updateReward(rewards){if(!rewards)return;rewardRemaining=rewards.remaining_seconds;rewardUpdated=Date.now();rewardActive=rewards.active;renderReward();}
+function renderReward(){const seconds=Math.max(0,Math.ceil(rewardRemaining-(rewardActive&&!document.hidden?(Date.now()-rewardUpdated)/1000:0)));$('#daily-label').textContent=document.hidden||!rewardActive?'Optjening pauset':'Næste 500 om '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');}
+async function presence(active){
+ if(!state.data||presenceBusy)return;presenceBusy=true;
+ try{const data=await api('/api/presence',{active,tab_id:presenceTab});state.data.user.balance=data.balance;$('#balance').textContent=money(data.balance);updateReward(data.rewards);}catch{rewardActive=false;renderReward();}finally{presenceBusy=false;}
+}
+function pausePresence(){
+ rewardRemaining=Math.max(0,rewardRemaining-(rewardActive?(Date.now()-rewardUpdated)/1000:0));rewardUpdated=Date.now();rewardActive=false;renderReward();
+ if(state.data)fetch('/api/presence',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json','X-CSRF-Token':$('meta[name="csrf-token"]').content},body:JSON.stringify({active:false,tab_id:presenceTab})}).catch(()=>{});
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pausePresence();else presence(true);});
+addEventListener('pagehide',pausePresence);
+setInterval(()=>{if(!document.hidden)renderReward();},1000);
+setInterval(()=>{if(!document.hidden)presence(true);},20000);
 async function refresh(){renderState(await api('/api/state'));}
 function renderHistory(){
  const data=state.data;if(!data)return;
@@ -130,11 +146,11 @@ function renderBlackjack(){
  if(active){const actions=element('div','blackjack-actions');[['hit','Kort +'],['stand','Stå'],['double','Fordobl']].forEach(([action,title])=>{const b=button(title,'button '+(action==='hit'?'gold':'secondary'),()=>play('blackjack',{action,round_id:game.round_id},receive));b.disabled=state.busy||(action==='double'&&(!game.can_double||state.data.user.balance<game.bet));actions.append(b);});controls.append(actions);}else controls.append(betSelect([20,50,100,200,500,1000]),button('Giv kort ♠','button gold',()=>play('blackjack',{action:'start',bet:Number($('#bet').value)},receive)));
  stage.append(controls,element('p','rules-inline','Dealer står på alle 17. Blackjack giver 3:2 plus indsatsen tilbage. Fordobling giver ét kort. Ingen split eller forsikring. Din hånd gemmes automatisk.'));$('#game-content').replaceChildren(stage);
 }
-function rules(){const content=$('#rules-content');content.replaceChildren();[['Virtuelle mønter','Du får 5.000 startmønter og 1.000 ved dagens første besøg (Europe/Copenhagen). Mønterne kan ikke købes eller udbetales.'],['Spilleautomater','Indsatsen deles mellem tre vandrette linjer. Tre ens symboler vinder; wild erstatter alle symboler. Gevinsttabellen viser multiplikator pr. linje, inklusive indsats.'],['Roulette','Europæisk hjul med 0–36. Et tal giver 36×, dusin og kolonne 3×, rød/sort, lige/ulige og høj/lav 2×, inklusive indsats. Nul vinder kun på nul. Begge borde har samme regler.'],['Blackjack','Kom nærmest 21 uden at gå over. Es tæller 1 eller 11. Dealer står på 17, også blød 17. Blackjack betaler 3:2; almindelig gevinst 1:1. Lige spil giver indsatsen tilbage. Fordobling er kun mulig på de første to kort og giver ét kort. Ingen split eller forsikring.']].forEach(([title,text])=>content.append(element('h3','',title),element('p','',text)));$('#rules-dialog').showModal();}
+function rules(){const content=$('#rules-content');content.replaceChildren();[['Virtuelle mønter','Du starter med 10.000 mønter og får 500 for hvert kvarter med kasinoet åbent og synligt. Optjent tid gemmes og pauses, når du forlader siden eller skifter fane. Flere faner giver ikke ekstra mønter. Mønterne kan ikke købes eller udbetales.'],['Spilleautomater','Indsatsen deles mellem tre vandrette linjer. Tre ens symboler vinder; wild erstatter alle symboler. Gevinsttabellen viser multiplikator pr. linje, inklusive indsats.'],['Roulette','Europæisk hjul med 0–36. Et tal giver 36×, dusin og kolonne 3×, rød/sort, lige/ulige og høj/lav 2×, inklusive indsats. Nul vinder kun på nul. Begge borde har samme regler.'],['Blackjack','Kom nærmest 21 uden at gå over. Es tæller 1 eller 11. Dealer står på 17, også blød 17. Blackjack betaler 3:2; almindelig gevinst 1:1. Lige spil giver indsatsen tilbage. Fordobling er kun mulig på de første to kort og giver ét kort. Ingen split eller forsikring.']].forEach(([title,text])=>content.append(element('h3','',title),element('p','',text)));$('#rules-dialog').showModal();}
 document.querySelectorAll('[data-nav]').forEach(el=>el.onclick=()=>navigate(el.dataset.nav));
 document.querySelectorAll('[data-filter]').forEach(el=>el.onclick=()=>filter(el.dataset.filter));
 document.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openGame(el.dataset.open));
 document.querySelectorAll('[data-close]').forEach(el=>el.onclick=()=>document.getElementById(el.dataset.close).close());
 $('#rules-open').onclick=rules;$('#game-rules').onclick=rules;$('#account-button').onclick=()=>$('#account-dialog').showModal();
 $('#logout').onclick=async()=>{if(state.busy)return;try{await api('/api/logout',{});location.assign('/login');}catch(error){toast(error.message,true);}};
-refresh().then(()=>{loadPending();if(state.pending)toast('En runde afventer bekræftelse. Hent resultatet, før du spiller videre.',true,recover);}).catch(error=>toast('Saldoen kunne ikke hentes: '+error.message,true,()=>location.reload()));
+refresh().then(()=>{if(!document.hidden)presence(true);loadPending();if(state.pending)toast('En runde afventer bekræftelse. Hent resultatet, før du spiller videre.',true,recover);}).catch(error=>toast('Saldoen kunne ikke hentes: '+error.message,true,()=>location.reload()));

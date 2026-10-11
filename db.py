@@ -20,6 +20,8 @@ def connect(path):
 
 def initialize(path):
     with connect(path) as db:
+        if db.execute('PRAGMA user_version').fetchone()[0] > 2:
+            raise RuntimeError('Database schema is newer than this application')
         db.execute('PRAGMA journal_mode=WAL')
         db.executescript('''
         CREATE TABLE IF NOT EXISTS users (
@@ -47,5 +49,14 @@ def initialize(path):
         );
         CREATE TABLE IF NOT EXISTS login_attempts (address TEXT NOT NULL, at REAL NOT NULL);
         CREATE INDEX IF NOT EXISTS login_attempt_time ON login_attempts(at);
-        PRAGMA user_version=1;
+        CREATE TABLE IF NOT EXISTS coin_rewards (
+          user_id INTEGER PRIMARY KEY REFERENCES users(id),
+          reset_version INTEGER NOT NULL, active_seconds REAL NOT NULL DEFAULT 0,
+          last_seen REAL
+        );
+        CREATE TABLE IF NOT EXISTS coin_presence (
+          user_id INTEGER NOT NULL REFERENCES users(id), tab_id TEXT NOT NULL,
+          last_seen REAL NOT NULL, PRIMARY KEY(user_id,tab_id)
+        );
+        PRAGMA user_version=2;
         ''')
