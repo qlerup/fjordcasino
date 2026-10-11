@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101b20"><meta name="csrf-token" content="{{ session.csrf }}">
+  <title>FjordCasino · Ren spilleglæde</title>
+  <link rel="icon" href="{{ url_for('static',filename='icon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static',filename='casino.css',v='1.0.0') }}">
+  <script src="{{ url_for('static',filename='casino.js',v='1.0.0') }}" defer></script>
+<link rel="apple-touch-icon" href="{{ url_for('static',filename='logos/apple-touch-icon.png') }}"><link rel="manifest" href="{{ url_for('static',filename='site.webmanifest') }}"><link rel="icon" sizes="32x32" href="{{ url_for('static',filename='logos/icon-32.png') }}"></head>
+<body>
+<aside class="sidebar">
+  <a href="#lobby" class="brand" aria-label="FjordCasino lobby"><img src="{{ url_for('static',filename='icon.svg') }}" alt=""><span>FJORD<span class="brand-light">CASINO</span><small>DET ER BARE FOR SJOV</small></span></a>
+  <div class="nav-caption">DIT KASINO</div>
+  <nav aria-label="Spilnavigation">
+    <button data-nav="lobby" class="nav-item active"><span>◈</span> Lobby</button>
+    <button data-nav="slots" class="nav-item"><span>▥</span> Spilleautomater <em>3</em></button>
+    <button data-nav="roulette" class="nav-item"><span>◎</span> Roulette <em>2</em></button>
+    <button data-nav="blackjack" class="nav-item"><span>♠</span> Blackjack</button>
+    <div class="nav-divider"></div>
+    <button data-nav="history" class="nav-item"><span>↺</span> Min spilhistorik</button>
+    <button id="rules-open" class="nav-item"><span>ⓘ</span> Sådan spiller du</button>
+  </nav>
+  <div class="sidebar-bottom"><div class="play-money-icon">✦</div><strong>Store oplevelser.<br>Små badeænder.</strong><p>Kun virtuelle mønter.<br>Ingen indbetaling eller udbetaling.</p><span class="version">FJORDHUB FAMILIEN · V1.0</span></div>
+</aside>
+<div class="main-shell">
+  <header class="topbar"><div class="breadcrumb"><span>FjordHub</span><b>/</b> FjordCasino</div><div class="top-actions"><span class="fun-badge">KUN FOR SJOV</span><div class="wallet"><span class="coin">F</span><div><small>DIN SALDO</small><strong id="balance">—</strong></div></div><button id="account-button" class="avatar" title="Log ud" aria-label="Log ud">{{ username[:1]|upper }}</button></div></header>
+  <main id="main" tabindex="-1">
+    <section id="lobby-view" class="view">
+      <div class="welcome-line"><p>Velkommen indenfor, <strong>{{ username }}</strong> <span>✦</span></p><span class="quiet">Dit helt eget hyggekasino</span></div>
+      <section class="hero"><div class="hero-copy"><span class="eyebrow"><i></i> ANDERLEDES GOD UNDERHOLDNING</span><h1>Lidt held.<br>En masse <em>rap.</em></h1><p>Tag en plads ved bordet, drej hjulene, og lad de gode stunder rulle. Her spiller vi kun for sjov.</p><button class="button gold" data-open="slot:duck">Besøg Andedammen <span>↗</span></button><div class="hero-note"><span>✦</span> Virtuelle mønter. Ægte spilleglæde.</div></div><div class="hero-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><span class="art-spark spark-one">✧</span><span class="art-spark spark-two">✦</span><div class="floating-card">A<span>♠</span></div><div class="hero-duck" data-symbol="duck-crown"></div><div class="chip-stack"><i>F</i><i>F</i><i>F</i></div><div class="hero-ribbon">FJORDCASINO ORIGINAL</div><div class="water-ripple"></div></div></section>
+      <section class="daily-strip" aria-label="Daglige mønter"><div class="gift-icon">✧</div><div><strong>En ny dag. Et nyt spil.</strong><p>Du får automatisk 1.000 mønter ved dagens første besøg.</p></div><div class="daily-status"><span class="tiny-label">DAGLIG BONUS</span><strong>+1.000 <span class="coin small">F</span></strong><small id="daily-label">Henter dagens bonus …</small></div></section>
+      <div class="section-heading"><div><span class="eyebrow">FIND DIN FAVORIT</span><h2>Hvad har du lyst til at spille?</h2></div><div class="filter-tabs" role="group" aria-label="Filtrer spil"><button class="active" data-filter="all">Alle spil</button><button data-filter="slots">Slots</button><button data-filter="roulette">Roulette</button><button data-filter="blackjack">Blackjack</button></div></div>
+      <div class="game-grid" id="game-grid">
+        <button class="game-card duck-card" data-category="slots" data-open="slot:duck"><div class="card-art"><span class="card-badge">FJORD FAVORIT</span><div class="card-ducks"><i data-symbol="duck-mallard"></i><i data-symbol="duck-yellow"></i><i data-symbol="duck-pink"></i></div><span class="art-caption">RAP, RAP … JACKPOT!</span></div><div class="card-info"><div><small>SPILLEAUTOMAT · 3 LINJER</small><h3>Andedammen</h3><p>Fem ænder. Masser af muligheder.</p></div><span class="card-arrow">↗</span></div></button>
+        <button class="game-card cosmic-card" data-category="slots" data-open="slot:cosmic"><div class="card-art"><div class="space-stars">✧ <span>✦</span> ✧</div><div class="planet-art">🪐</div><span class="art-caption">HELT UDE I RUMMET</span></div><div class="card-info"><div><small>SPILLEAUTOMAT · 3 LINJER</small><h3>Stjernestøv</h3><p>En lille tur blandt stjernerne.</p></div><span class="card-arrow">↗</span></div></button>
+        <button class="game-card fruit-card" data-category="slots" data-open="slot:fruit"><div class="card-art"><div class="fruit-art">🍋<span>🍒</span>🍇</div><span class="art-caption">FRISK FRA HJULENE</span></div><div class="card-info"><div><small>SPILLEAUTOMAT · 3 LINJER</small><h3>Frugtfesten</h3><p>Den saftige, farverige klassiker.</p></div><span class="card-arrow">↗</span></div></button>
+        <button class="game-card roulette-card" data-category="roulette" data-open="roulette:classic"><div class="card-art"><div class="mini-wheel"><span>F</span></div><span class="art-caption">ET SPIN. 37 MULIGHEDER.</span></div><div class="card-info"><div><small>EUROPÆISK ROULETTE</small><h3>Roulette Royale</h3><p>Rød, sort — eller dit lykketal?</p></div><span class="card-arrow">↗</span></div></button>
+        <button class="game-card duck-roulette-card" data-category="roulette" data-open="roulette:duck"><div class="card-art"><span class="card-badge">ANDE-UDGAVE</span><div class="mini-wheel"><span data-symbol="duck-yellow"></span></div><span class="art-caption">HELD I ANDEDAMMEN</span></div><div class="card-info"><div><small>EUROPÆISK ROULETTE</small><h3>Anderoulette</h3><p>Det samme spil. Lidt mere rap.</p></div><span class="card-arrow">↗</span></div></button>
+        <button class="game-card blackjack-card" data-category="blackjack" data-open="blackjack"><div class="card-art"><div class="playing-card art-card-one">A<span>♠</span></div><div class="playing-card art-card-two">K<span>♥</span></div><span class="art-caption">TÆT PÅ 21. LANGT FRA KEDELIGT.</span></div><div class="card-info"><div><small>KORTSPIL · DEALER STÅR PÅ 17</small><h3>Blackjack Club</h3><p>Et kort mere, eller tør du stå?</p></div><span class="card-arrow">↗</span></div></button>
+      </div>
+      <section class="lobby-bottom"><div><span>✦</span><strong>Din saldo følger dig</strong><p>Spil videre med dit FjordHub-login.</p></div><div><span>◎</span><strong>Nyt held hver dag</strong><p>1.000 nye mønter ved dagens første besøg.</p></div><div><span>♧</span><strong>Helt uden rigtige penge</strong><p>Mønterne har ingen økonomisk værdi.</p></div></section>
+    </section>
+    <section id="game-view" class="view hidden"><button class="back-button" data-nav="lobby">← Tilbage til lobbyen</button><div class="game-heading"><div><span class="eyebrow" id="game-kicker"></span><h1 id="game-title"></h1></div><button class="button secondary" id="game-rules">Spilleregler ⓘ</button></div><div id="game-content"></div></section>
+    <section id="history-view" class="view hidden"><span class="eyebrow">DIT KASINO</span><h1>Min spilhistorik</h1><p class="quiet">Dine seneste 50 bevægelser — alle beløb er virtuelle mønter.</p><div class="stats-grid" id="stats"></div><div class="history-wrap"><table><thead><tr><th>Aktivitet</th><th>Tidspunkt</th><th>Mønter</th><th>Saldo efter</th></tr></thead><tbody id="history-rows"></tbody></table></div></section>
+    <footer><span>FJORD<span class="brand-light">CASINO</span></span><p>Spil for sjov. Mønter kan hverken købes, sælges eller udbetales.</p><span>Et lille frikvarter fra hverdagen ✦</span></footer>
+  </main>
+</div>
+<div id="toast" role="status" aria-live="polite" class="toast hidden"></div>
+<dialog id="rules-dialog"><div class="dialog-top"><span class="eyebrow">GODT AT VIDE</span><button class="icon-button" data-close="rules-dialog" aria-label="Luk">×</button></div><h2>Spilleregler</h2><div id="rules-content"></div><button class="button gold" data-close="rules-dialog">God fornøjelse</button></dialog>
+<dialog id="account-dialog"><div class="dialog-top"><span class="eyebrow">DIN KONTO</span><button class="icon-button" data-close="account-dialog" aria-label="Luk">×</button></div><h2>{{ username }}</h2><p>Din saldo og din igangværende blackjackhånd er gemt og følger dit login.</p><button class="button secondary" id="logout">Log ud</button></dialog>
+</body></html>

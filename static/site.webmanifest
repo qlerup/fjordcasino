@@ -1,0 +1,13 @@
+{
+  "name": "FjordCasino",
+  "short_name": "FjordCasino",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101b20",
+  "theme_color": "#143c35",
+  "icons": [
+    {"src":"/static/logos/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"/static/logos/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"/static/logos/maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
+  ]
+}

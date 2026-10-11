@@ -1,0 +1,218 @@
+{
+  "name": "FjordCasino",
+  "exports": [
+    {
+      "path": "static/logos/icon-16.png",
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "path": "static/logos/icon-32.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    {
+      "path": "static/logos/icon-48.png",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "path": "static/logos/icon-64.png",
+      "size": [
+        64,
+        64
+      ]
+    },
+    {
+      "path": "static/logos/icon-128.png",
+      "size": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "static/logos/icon-180.png",
+      "size": [
+        180,
+        180
+      ]
+    },
+    {
+      "path": "static/logos/icon-192.png",
+      "size": [
+        192,
+        192
+      ]
+    },
+    {
+      "path": "static/logos/icon-256.png",
+      "size": [
+        256,
+        256
+      ]
+    },
+    {
+      "path": "static/logos/icon-512.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "path": "static/logos/icon-1024.png",
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "path": "static/icon.svg",
+      "size": [
+        128,
+        128
+      ]
+    },
+    {
+      "path": "static/logos/mark.svg",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "path": "static/logos/favicon.ico",
+      "size": [
+        256,
+        256
+      ]
+    },
+    {
+      "path": "static/logos/apple-touch-icon.png",
+      "size": [
+        180,
+        180
+      ]
+    },
+    {
+      "path": "static/logos/app.icns",
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "path": "static/logos/maskable-192.png",
+      "size": [
+        192,
+        192
+      ],
+      "scale": 0.78,
+      "background": "#143c35"
+    },
+    {
+      "path": "static/logos/maskable-512.png",
+      "size": [
+        512,
+        512
+      ],
+      "scale": 0.78,
+      "background": "#143c35"
+    },
+    {
+      "path": "static/logos/logo-horizontal-light.svg",
+      "size": [
+        1000,
+        240
+      ],
+      "kind": "horizontal",
+      "ink": "#edf3f7"
+    },
+    {
+      "path": "static/logos/logo-horizontal-light.png",
+      "size": [
+        1000,
+        240
+      ],
+      "kind": "horizontal",
+      "ink": "#edf3f7"
+    },
+    {
+      "path": "static/logos/logo-horizontal-dark.svg",
+      "size": [
+        1000,
+        240
+      ],
+      "kind": "horizontal",
+      "ink": "#143c35"
+    },
+    {
+      "path": "static/logos/logo-horizontal-dark.png",
+      "size": [
+        1000,
+        240
+      ],
+      "kind": "horizontal",
+      "ink": "#143c35"
+    },
+    {
+      "path": "static/logos/logo-stacked-light.svg",
+      "size": [
+        800,
+        920
+      ],
+      "kind": "stacked",
+      "ink": "#edf3f7"
+    },
+    {
+      "path": "static/logos/logo-stacked-light.png",
+      "size": [
+        800,
+        920
+      ],
+      "kind": "stacked",
+      "ink": "#edf3f7"
+    },
+    {
+      "path": "static/logos/logo-stacked-dark.svg",
+      "size": [
+        800,
+        920
+      ],
+      "kind": "stacked",
+      "ink": "#143c35"
+    },
+    {
+      "path": "static/logos/logo-stacked-dark.png",
+      "size": [
+        800,
+        920
+      ],
+      "kind": "stacked",
+      "ink": "#143c35"
+    },
+    {
+      "path": "static/logos/social.svg",
+      "size": [
+        1200,
+        630
+      ],
+      "kind": "social",
+      "background": "#143c35"
+    },
+    {
+      "path": "static/logos/social.png",
+      "size": [
+        1200,
+        630
+      ],
+      "kind": "social",
+      "background": "#143c35"
+    }
+  ]
+}
