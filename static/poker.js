@@ -8,7 +8,11 @@ function openPoker(){
  document.querySelectorAll('[data-nav]').forEach(el=>el.classList.toggle('active',el.dataset.nav==='poker'));pokerRefresh();
 }
 document.querySelectorAll('[data-nav],[data-open]').forEach(el=>el.addEventListener('click',()=>{if(el.dataset.nav!=='poker'){pokerVisible=false;$('#poker-view').classList.add('hidden');}}));
-function pokerCard(value){return value===null?card(null):card(Math.floor(value/13)*13+(value%13+1)%13);}
+function pokerCard(value,highlight=false){
+ const el=value===null?card(null):card(Math.floor(value/13)*13+(value%13+1)%13);
+ if(highlight){el.classList.add('poker-best-card');el.setAttribute('aria-label',el.textContent+' · indgår i din bedste hånd');}
+ return el;
+}
 async function pokerRefresh(){
  if(pokerBusy||!state.data||document.activeElement?.closest('#poker-view input,#poker-view textarea'))return;
  pokerBusy=true;
@@ -77,11 +81,17 @@ function renderPoker(){
   sharing.append(element('summary','','Invitér flere'),invite);root.append(sharing);
  }
  const felt=element('div','poker-felt');felt.append(element('h2','',pokerLabel[view.stage]||view.stage),element('p','poker-pot','Pulje: '+money(view.pot)+' mønter'));
- const board=element('div','card-hand');view.board.forEach(c=>board.append(pokerCard(c)));if(!view.board.length)board.append(element('p','quiet','Fælleskort kommer efter første indsatsrunde.'));felt.append(board);
+ const hint=view.hand_hint,highlighted=new Set(hint?.cards||[]);
+ const board=element('div','card-hand');view.board.forEach(c=>board.append(pokerCard(c,highlighted.has(c))));if(!view.board.length)board.append(element('p','quiet','Fælleskort kommer efter første indsatsrunde.'));felt.append(board);
+ if(hint){
+  const status=element('p','poker-hand-hint','Din hånd: '+hint.label);status.setAttribute('role','status');
+  const explanation=hint.plays_board?'Bordet spiller · dine egne kort forbedrer ikke hånden.':hint.complete?'De fem markerede kort er din bedste hånd lige nu.':'Dine startkort · fælleskortene kan forbedre hånden.';
+  status.append(element('small','',explanation));felt.append(status);
+ }
  const players=element('div','poker-players');players.style.setProperty('--seats',Math.min(3,view.players.filter(p=>!p.left).length));view.players.forEach((player,i)=>{
   if(player.left)return;const seat=element('div','poker-seat'+(view.turn===i?' active':'')+(player.folded?' folded':'')+(view.winners.includes(i)?' winner':''));
   seat.append(element('strong','',player.name+(i===view.seat?' (dig)':'')+(i===view.dealer?' · D':'')),element('p','',money(player.stack)+' jetoner · satset '+money(player.bet)));
-  const cards=element('div','card-hand');player.cards.forEach(c=>cards.append(pokerCard(c)));seat.append(cards);
+  const cards=element('div','card-hand');player.cards.forEach(c=>cards.append(pokerCard(c,i===view.seat&&highlighted.has(c))));seat.append(cards);
   if(player.folded)seat.append(element('span','','Foldet'));if(view.winners.includes(i))seat.append(element('strong','poker-winner-label',view.winners.length>1?'Vinder af en pulje':'Vinder af hånden'));players.append(seat);
  });felt.append(players);
  const controls=element('div','poker-controls');const send=(action,amount)=>pokerRequest('/api/poker/action',{op:'action',action,amount,revision:view.revision});

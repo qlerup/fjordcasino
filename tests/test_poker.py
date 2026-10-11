@@ -25,6 +25,49 @@ def test_hand_ranking():
     assert engine.best_hand([0,13,26,39,12,11,10])==(7,2,14)
 
 
+def test_hand_hint_matches_shared_ace_pair_and_excludes_unused_kickers():
+    game=table((1000,1000));game.update(stage='river',board=[18,10,47,1,51])
+    game['players'][0]['cards']=[15,38] # 4 hearts, ace clubs
+    game['players'][1]['cards']=[30,12] # 6 clubs, ace spades
+    for seat,unused in ((0,15),(1,30)):
+        hint=engine.hand_hint(game,seat)
+        assert hint['label']=='Ét par' and len(hint['cards'])==5
+        assert unused not in hint['cards']
+        assert engine.rank_five(hint['cards'])==(1,14,12,10,7)
+        assert not hint['plays_board']
+    assert engine.public(game,0)['hand_hint']['cards']==[38,18,10,47,51]
+
+
+@pytest.mark.parametrize('cards,label',[
+    ([12,10,8,5,14],'Højt kort'),([12,25,10,8,5],'Ét par'),
+    ([12,25,10,23,5],'To par'),([12,25,38,8,5],'Tre ens'),
+    ([12,0,1,2,16],'Straight'),([12,10,8,5,1],'Flush'),
+    ([12,25,38,0,13],'Fuldt hus'),([12,25,38,51,5],'Fire ens'),
+    ([0,1,2,3,4],'Straight flush'),([8,9,10,11,12],'Royal flush')])
+def test_hand_hint_labels_use_settlement_ranking(cards,label):
+    game=table();game.update(stage='flop',board=cards[2:]);game['players'][0]['cards']=cards[:2]
+    hint=engine.hand_hint(game,0)
+    assert hint['label']==label and set(hint['cards'])==set(cards)
+    assert hint['complete']
+
+
+def test_hand_hint_playing_board_and_private_start_cards():
+    game=table();game.update(stage='river',board=[8,9,10,11,12])
+    game['players'][0]['cards']=[13,26]
+    hint=engine.hand_hint(game,0)
+    assert hint['label']=='Royal flush' and hint['plays_board']
+    assert set(hint['cards'])==set(game['board'])
+    game.update(stage='preflop',board=[])
+    assert engine.hand_hint(game,0)['label']=='Ét par'
+    assert not engine.hand_hint(game,0)['complete']
+    game['players'][0]['cards']=[0,25]
+    assert engine.hand_hint(game,0)['cards']==[25]
+    game['players'][0]['folded']=True
+    assert engine.hand_hint(game,0) is None
+    game['players'][1]['cards']=[12,38]
+    assert engine.public(game,0)['players'][1]['cards']==[None,None]
+
+
 @pytest.mark.parametrize('stacks',[(1000,1000),(1000,1000,1000),(35,70,150),(10,10)])
 def test_hands_conserve_coins_and_keep_cards_private(stacks):
     for seed in range(10):
