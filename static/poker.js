@@ -1,5 +1,5 @@
 'use strict';
-let pokerData=null,pokerBusy=false,pokerVisible=false,pokerHostAddress=location.origin;
+let pokerData=null,pokerBusy=false,pokerVisible=false,pokerHostAddress=location.origin,pokerRenderedState=null;
 const pokerLabel={waiting:'Venter på spillere',preflop:'Før floppet',flop:'Flop',turn:'Turn',river:'River',finished:'Hånden er afsluttet'};
 function openPoker(){
  if(state.busy)return;state.game=null;pokerVisible=true;
@@ -24,7 +24,10 @@ async function pokerRequest(path,body){
 }
 function invitation(code){return 'FC1.'+btoa(JSON.stringify({url:pokerHostAddress,code}));}
 function renderPoker(){
- const root=$('#poker-content');root.replaceChildren();
+ const root=$('#poker-content');
+ const nextState=JSON.stringify({connected:!!pokerData?.connected,view:pokerData?.view,leaving:pokerData?.leaving,invite_code:pokerData?.invite_code});
+ if(nextState===pokerRenderedState&&root.children.length){$('#poker-error')?.remove();return;}
+ pokerRenderedState=nextState;root.replaceChildren();
  if(!pokerData?.connected){
   const panel=element('div','poker-setup');panel.append(element('h2','','Opret et bord eller forbind til en ven'));
   panel.append(button('Opret bord · 1.000 mønter','button gold',async()=>{

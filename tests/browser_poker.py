@@ -42,6 +42,26 @@ with tempfile.TemporaryDirectory(prefix='casino-poker-test-') as data:
             expect(host.locator('#balance')).to_have_text('9.000');expect(guest.locator('#balance')).to_have_text('9.000')
             host.get_by_role('button',name='Start næste hånd').click()
             expect(host.locator('.poker-felt')).to_contain_text('Før floppet')
+            # Unchanged real polling must preserve nodes and user-sized inputs.
+            host.evaluate('''() => {
+                window.stableFelt=document.querySelector('.poker-felt');
+                window.stableCard=document.querySelector('.poker-felt .playing-card');
+                window.pokerMutations=0;
+                window.pokerObserver=new MutationObserver(records=>window.pokerMutations+=records.length);
+                window.pokerObserver.observe(document.querySelector('#poker-content'),{childList:true,subtree:true});
+                document.querySelector('#poker-share-code').style.height='160px';
+                window.scrollTo(0,document.querySelector('.poker-felt').offsetTop);
+                window.stableScroll=window.scrollY;
+            }''')
+            for _ in range(2):
+                with host.expect_response(lambda response: response.url.endswith('/api/poker/state')):
+                    pass
+                host.wait_for_function('!pokerBusy')
+            assert host.evaluate('''() => window.stableFelt===document.querySelector('.poker-felt')
+                && window.stableCard===document.querySelector('.poker-felt .playing-card')
+                && window.pokerMutations===0 && window.scrollY===window.stableScroll
+                && document.querySelector('#poker-share-code').style.height==='160px' '''), 'Unchanged polling rebuilt or moved the poker table'
+            host.evaluate('window.pokerObserver.disconnect()')
             for _ in range(20):
                 view=host.request.get(urls[0]+'/api/poker/state').json()['view']
                 if view['stage']=='finished':break
