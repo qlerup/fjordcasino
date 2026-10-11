@@ -1,6 +1,6 @@
 'use strict';
 let pokerData=null,pokerBusy=false,pokerVisible=false,pokerHostAddress=location.origin,pokerRenderedState=null;
-let pokerSeenAction=null,pokerFinishedHand=null,pokerNoticeTimer=null;
+let pokerSeenAction=null,pokerNoticeTimer=null;
 const pokerLabel={waiting:'Venter på spillere',preflop:'Før floppet',flop:'Flop',turn:'Turn',river:'River',finished:'Hånden er afsluttet'};
 function openPoker(){
  if(state.busy)return;state.game=null;pokerVisible=true;
@@ -25,8 +25,15 @@ async function pokerRequest(path,body){
 }
 function invitation(code){return 'FC1.'+btoa(JSON.stringify({url:pokerHostAddress,code}));}
 function pokerFeedback(view){
+ if(view.stage==='finished'){
+  document.querySelectorAll('.poker-seat.winner').forEach(seat=>{
+   const confetti=element('div','poker-confetti');confetti.setAttribute('aria-hidden','true');
+   for(let i=0;i<22;i++){const piece=element('i');piece.style.setProperty('--x',(Math.random()*100)+'%');piece.style.setProperty('--drift',(Math.random()*100-50)+'px');piece.style.setProperty('--delay',(-Math.random()*2.8)+'s');piece.style.setProperty('--color',['#efd594','#bce4c6','#e9a292','#fff3d7'][i%4]);confetti.append(piece);}
+   seat.append(confetti);
+  });
+ }
  const events=view.events||[],latest=events.at(-1)?.id||0;
- if(pokerSeenAction===null){pokerSeenAction=latest;pokerFinishedHand=view.stage==='finished'?view.hand_id:null;return;}
+ if(pokerSeenAction===null){pokerSeenAction=latest;return;}
  const fresh=events.filter(event=>event.id>pokerSeenAction&&event.seat!==view.seat);
  pokerSeenAction=Math.max(pokerSeenAction,latest);
  if(fresh.length){
@@ -35,17 +42,9 @@ function pokerFeedback(view){
    const amount=event.action==='raise'?event.bet:event.paid;
    return (view.players[event.seat]?.name||'En spiller')+' '+(words[event.action]||event.action)+(['call','raise','allin'].includes(event.action)?' '+money(amount)+' mønter':'');
   }).join(' · ');
-  let notice=$('#poker-action-notice');if(!notice){notice=element('div','poker-action-notice');notice.id='poker-action-notice';notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');$('#poker-view').append(notice);}
-  clearTimeout(pokerNoticeTimer);notice.textContent=text;notice.classList.remove('fading');
+  let notice=$('#poker-action-notice');if(!notice){notice=element('div','poker-action-notice');notice.id='poker-action-notice';notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');$('.poker-felt').append(notice);}
+  clearTimeout(pokerNoticeTimer);notice.dataset.hand=String(view.hand_id);notice.textContent=text;notice.classList.remove('fading');
   pokerNoticeTimer=setTimeout(()=>{notice.classList.add('fading');},3000);
- }
- if(view.stage==='finished'&&pokerFinishedHand!==view.hand_id){
-  pokerFinishedHand=view.hand_id;
-  document.querySelectorAll('.poker-seat.winner').forEach(seat=>{
-   const confetti=element('div','poker-confetti');confetti.setAttribute('aria-hidden','true');
-   for(let i=0;i<22;i++){const piece=element('i');piece.style.setProperty('--x',(Math.random()*100)+'%');piece.style.setProperty('--drift',(Math.random()*100-50)+'px');piece.style.setProperty('--delay',(Math.random()*.35)+'s');piece.style.setProperty('--color',['#efd594','#bce4c6','#e9a292','#fff3d7'][i%4]);confetti.append(piece);}
-   seat.append(confetti);setTimeout(()=>confetti.remove(),3500);
-  });
  }
 }
 function renderPoker(){
@@ -53,9 +52,10 @@ function renderPoker(){
  $('#poker-view > .quiet').classList.toggle('hidden',!!pokerData?.connected);
  const nextState=JSON.stringify({connected:!!pokerData?.connected,view:pokerData?.view,leaving:pokerData?.leaving,invite_code:pokerData?.invite_code});
  if(nextState===pokerRenderedState&&root.children.length){$('#poker-error')?.remove();return;}
+ const previousNotice=$('#poker-action-notice');
  pokerRenderedState=nextState;root.replaceChildren();
  if(!pokerData?.connected){
-  pokerSeenAction=null;pokerFinishedHand=null;$('#poker-action-notice')?.remove();
+  pokerSeenAction=null;clearTimeout(pokerNoticeTimer);
   const panel=element('div','poker-setup');panel.append(element('h2','','Opret et bord eller forbind til en ven'));
   panel.append(button('Opret bord · 1.000 mønter','button gold',async()=>{
    if(pokerBusy)return;pokerBusy=true;
@@ -92,6 +92,6 @@ function renderPoker(){
  }else if(view.stage!=='waiting'&&view.stage!=='finished')controls.append(element('p','quiet','Venter på '+(view.players[view.turn]?.name||'bordet')+' · automatisk fold efter 60 sekunder.'));
  if(view.host&&['waiting','finished'].includes(view.stage))controls.append(button('Start næste hånd','button gold',()=>pokerRequest('/api/poker/action',{op:'start',revision:view.revision})));
  controls.append(button(pokerData.leaving?'Afventer hånden · hent status':'Forlad bordet og få jetoner tilbage','button secondary',()=>pokerRequest('/api/poker/action',{op:'leave',revision:view.revision})));
- felt.append(controls,element('p','quiet','Texas Hold’em · op til 6 spillere · blinds 10/20 · sidepuljer ved all-in. Ingen ekstra indskud midt i hånden.'));root.append(felt);pokerFeedback(view);
+ felt.append(controls,element('p','quiet','Texas Hold’em · op til 6 spillere · blinds 10/20 · sidepuljer ved all-in. Ingen ekstra indskud midt i hånden.'));if(previousNotice?.dataset.hand===String(view.hand_id))felt.append(previousNotice);else clearTimeout(pokerNoticeTimer);root.append(felt);pokerFeedback(view);
 }
 setInterval(()=>{if(pokerVisible&&!document.hidden)pokerRefresh();},2500);

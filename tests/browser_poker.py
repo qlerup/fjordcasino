@@ -80,6 +80,12 @@ with tempfile.TemporaryDirectory(prefix='casino-poker-test-') as data:
                 actor.wait_for_function('r=>pokerData?.view?.revision>r',arg=view['revision'])
                 if _==0:
                     expect(guest.locator('#poker-action-notice')).to_contain_text('Host kaldte')
+                    assert guest.evaluate('''() => {
+                        const notice=document.querySelector('#poker-action-notice'),felt=notice.closest('.poker-felt');
+                        if(!felt)return false;
+                        const n=notice.getBoundingClientRect(),f=felt.getBoundingClientRect();
+                        return Math.abs(n.x+n.width/2-f.x-f.width/2)<2 && Math.abs(n.y+n.height/2-f.y-f.height/2)<2;
+                    }'''), 'Action notice is not centered on the poker table'
                     expect(guest.locator('#poker-action-notice')).to_have_class('poker-action-notice fading',timeout=6000)
                 if actor.evaluate("pokerData.view.stage==='finished'"):
                     assert actor.locator('.poker-seat.winner .poker-confetti').count()>0
@@ -87,6 +93,13 @@ with tempfile.TemporaryDirectory(prefix='casino-poker-test-') as data:
             expect(guest.locator('.poker-felt')).to_contain_text('Hånden er afsluttet',timeout=10000)
             for page in pages:
                 expect(page.locator('.poker-winner-label').first).to_be_visible()
+            host.evaluate("window.winnerConfetti=document.querySelector('.poker-confetti')")
+            # Three real polls span at least five seconds: confetti must remain.
+            for _ in range(3):
+                with host.expect_response(lambda response: response.url.endswith('/api/poker/state')):
+                    pass
+                host.wait_for_function('!pokerBusy')
+            assert host.evaluate("window.winnerConfetti===document.querySelector('.poker-confetti') && getComputedStyle(window.winnerConfetti.firstChild).animationIterationCount==='infinite'")
             for width in (320,561,850,1100):
                 host.set_viewport_size({'width':width,'height':1000})
                 assert host.evaluate('document.documentElement.scrollWidth<=innerWidth'), f'Page overflow at {width}px'
@@ -95,6 +108,11 @@ with tempfile.TemporaryDirectory(prefix='casino-poker-test-') as data:
             for i,page in enumerate(pages):
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                 page.screenshot(path=str(out/f'poker-{[1440,390][i]}.png'),full_page=True)
+            host.get_by_role('button',name='Start næste hånd').click()
+            for page in pages:
+                expect(page.locator('.poker-felt')).to_contain_text('Før floppet')
+                expect(page.locator('.poker-confetti')).to_have_count(0)
+            for page in pages:
                 page.get_by_role('button',name='Forlad bordet').click();expect(page.get_by_role('button',name='Opret bord')).to_be_visible()
             balances=[p.request.get(url+'/api/state').json()['user']['balance'] for p,url in zip(pages,urls)]
             assert sum(balances)==20000
