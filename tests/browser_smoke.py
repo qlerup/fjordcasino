@@ -52,7 +52,7 @@ with tempfile.TemporaryDirectory(prefix='fjordcasino-browser-') as data:
                     page.get_by_role('button',name='Tilbage til lobbyen').click()
                 page.locator('.game-card[data-open="blackjack"]').click()
                 page.get_by_role('button',name='Giv kort').click()
-                page.wait_for_function("document.querySelector('#game-content select') || document.querySelector('.blackjack-actions')")
+                page.wait_for_function("() => document.querySelector('#game-content select') || document.querySelector('.blackjack-actions')")
                 expect(page.locator('[data-nav="lobby"]').first).to_be_enabled()
                 hand=page.locator('.card-hand').last.inner_text()
                 page.reload();expect(page.locator('#balance')).not_to_have_text('—')
