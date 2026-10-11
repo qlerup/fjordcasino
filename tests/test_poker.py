@@ -95,6 +95,26 @@ def test_side_pots_and_odd_chip():
     assert sorted(p['stack'] for p in game['players'][1:])==[50,50]
 
 
+def test_two_pairs_beat_aces_and_uncalled_refund_is_not_a_win():
+    game=table((1080,0));game.update(stage='river',board=[10,46,11,26,29],dealer=1)
+    for p,total,cards in zip(game['players'],(390,530),([24,20],[51,25])):
+        p.update(in_hand=True,folded=False,total=total,cards=cards)
+    assert engine.best_hand(game['players'][0]['cards']+game['board'])==(2,13,9,12)
+    assert engine.best_hand(game['players'][1]['cards']+game['board'])==(1,14,13,12,9)
+    engine.settle(game)
+    assert [p['stack'] for p in game['players']]==[1860,140]
+    assert game['winners']==[0]
+
+
+def test_real_side_pot_winner_remains_distinct_from_uncalled_refund():
+    game=table((0,0,0));game.update(stage='river',board=[10,46,11,26,29],dealer=0)
+    for p,total,cards in zip(game['players'],(100,200,250),([24,20],[51,25],[36,19])):
+        p.update(in_hand=True,folded=False,total=total,cards=cards)
+    engine.settle(game)
+    assert [p['stack'] for p in game['players']]==[300,200,50]
+    assert game['winners']==[0,1]
+
+
 def test_deadline_folds_disconnected_player():
     game=table((1000,1000));engine.start(game,now=0);seat=game['turn']
     engine.tick(game,now=61)

@@ -83,6 +83,10 @@ def settle(table):
         for level in sorted({p.get('total',0) for p in table['players'] if p.get('total',0)>0}):
             contributors=[i for i,p in enumerate(table['players']) if p.get('total',0)>=level]
             increment=level-previous;pot=increment*len(contributors);previous=level
+            if len(contributors)==1:
+                # An uncalled bet is a refund, not a won side pot.
+                table['players'][contributors[0]]['stack']+=pot
+                continue
             eligible=[i for i in contributors if i in ranks]
             if not eligible:
                 # An unmatched contribution is returned to its contributor.

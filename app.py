@@ -258,7 +258,7 @@ def create_app(config=None):
     @app.get('/api/health')
     def health():
         with connect(path) as db: db.execute('SELECT 1 FROM users LIMIT 1')
-        return jsonify(ok=True,app='fjordcasino',version='1.2.4')
+        return jsonify(ok=True,app='fjordcasino',version='1.2.5')
 
     @app.get('/')
     def index(): return render_template('index.html', username=g.user['username'])
