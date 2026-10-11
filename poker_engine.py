@@ -45,7 +45,7 @@ def pay(p,amount):
 def start(table,now=None):
     if table['stage'] not in ('waiting','finished'):raise GameError('Afslut den aktuelle hånd først.')
     if sum(ready(p) for p in table['players'])<2:raise GameError('Mindst to spillere med jetoner skal sidde ved bordet.')
-    table.update(stage='preflop',board=[],deck=list(range(52)),current_bet=20,min_raise=20,acted=[],message='',winners=[],revision=table['revision']+1)
+    table.update(stage='preflop',board=[],deck=list(range(52)),current_bet=20,min_raise=20,acted=[],message='',winners=[],revision=table['revision']+1,hand_id=table.get('hand_id',0)+1)
     secrets.SystemRandom().shuffle(table['deck'])
     for p in table['players']:
         p.update(in_hand=ready(p),folded=False,bet=0,total=0,cards=[])
@@ -101,9 +101,15 @@ def advance(table,now=None):
         table['turn']=next_seat(table,table['dealer'],movable)
 
 
+def record_action(table,seat,action,paid=0,now=None):
+    events=table.setdefault('events',[])
+    events.append({'id':table['revision'],'seat':seat,'action':action,'paid':paid,'bet':table['players'][seat].get('bet',0),'at':time.time() if now is None else now})
+    table['events']=events[-12:]
+
+
 def act(table,seat,action,amount=None,now=None):
     if table['stage'] in ('waiting','finished') or table['turn']!=seat:raise GameError('Det er ikke din tur.')
-    p=table['players'][seat];owed=table['current_bet']-p['bet']
+    p=table['players'][seat];owed=table['current_bet']-p['bet'];before=p['stack']
     if action=='fold':p['folded']=True
     elif action=='check':
         if owed:raise GameError('Du skal kalde indsatsen eller folde.')
@@ -122,7 +128,8 @@ def act(table,seat,action,amount=None,now=None):
             table['current_bet']=target
     else:raise GameError('Ugyldig pokerhandling.')
     if seat not in table['acted']:table['acted'].append(seat)
-    table['revision']+=1;table['turn']=next_seat(table,seat,movable);advance(table,now)
+    table['revision']+=1;record_action(table,seat,action,before-p['stack'],now)
+    table['turn']=next_seat(table,seat,movable);advance(table,now)
 
 
 def tick(table,now=None):
@@ -136,5 +143,6 @@ def public(table,seat):
             'revision':table['revision'],'deadline':table.get('deadline'),'current_bet':table.get('current_bet',0),
             'min_raise':table.get('min_raise',20),'pot':sum(p.get('total',0) for p in table['players']) if table['stage'] not in ('waiting','finished') else 0,
             'winners':table.get('winners',[]),'seat':seat,'host':p.get('host',False),'message':table.get('message',''),
+            'hand_id':table.get('hand_id',0),'events':table.get('events',[]),
             'players':[{'name':v['name'],'stack':v['stack'],'bet':v.get('bet',0),'folded':v.get('folded',False),'left':v.get('left',False),
                        'cards':v.get('cards',[]) if i==seat or table['stage']=='finished' and live(v) else [None]*len(v.get('cards',[]))} for i,v in enumerate(table['players'])]}

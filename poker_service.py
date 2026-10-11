@@ -80,7 +80,7 @@ def install(app,credit):
             elif op=='leave':
                 p['withdrawing']=True
                 if table['stage'] not in ('waiting','finished') and p.get('in_hand') and not p.get('folded'):
-                    p['folded']=True;table['revision']+=1;engine.advance(table)
+                    p['folded']=True;table['revision']+=1;engine.record_action(table,seat,'fold');engine.advance(table)
                 if table['stage'] not in ('waiting','finished') and p.get('in_hand'):
                     db.execute('UPDATE poker_tables SET state=? WHERE id=?',(json.dumps(table),saved['id']))
                     return {'ok':True,'waiting':True,'view':engine.public(table,seat)}

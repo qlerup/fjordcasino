@@ -39,9 +39,16 @@ with tempfile.TemporaryDirectory(prefix='casino-poker-test-') as data:
             guest.locator('#poker-invite').fill(invite);guest.locator('.poker-connect button').click()
             expect(guest.locator('.poker-seat')).to_have_count(2)
             expect(host.locator('.poker-seat')).to_have_count(2)
+            expect(host.locator('#poker-share-code')).to_be_hidden()
+            host.locator('.poker-sharing summary').click()
+            expect(host.locator('#poker-share-code')).to_be_visible()
+            host.locator('.poker-sharing summary').click()
             expect(host.locator('#balance')).to_have_text('9.000');expect(guest.locator('#balance')).to_have_text('9.000')
             host.get_by_role('button',name='Start næste hånd').click()
             expect(host.locator('.poker-felt')).to_contain_text('Før floppet')
+            for page,minimum in ((host,90),(guest,58)):
+                expect(page.locator('.poker-felt .playing-card').first).to_be_visible()
+                assert page.locator('.poker-felt .playing-card').first.bounding_box()['width']>=minimum
             # Unchanged real polling must preserve nodes and user-sized inputs.
             host.evaluate('''() => {
                 window.stableFelt=document.querySelector('.poker-felt');
@@ -71,8 +78,20 @@ with tempfile.TemporaryDirectory(prefix='casino-poker-test-') as data:
                 expect(actor.locator('.poker-felt')).to_be_visible()
                 # Wait until the committed revision advances before another action.
                 actor.wait_for_function('r=>pokerData?.view?.revision>r',arg=view['revision'])
+                if _==0:
+                    expect(guest.locator('#poker-action-notice')).to_contain_text('Host kaldte')
+                    expect(guest.locator('#poker-action-notice')).to_have_class('poker-action-notice fading',timeout=6000)
+                if actor.evaluate("pokerData.view.stage==='finished'"):
+                    assert actor.locator('.poker-seat.winner .poker-confetti').count()>0
             expect(host.locator('.poker-felt')).to_contain_text('Hånden er afsluttet',timeout=10000)
             expect(guest.locator('.poker-felt')).to_contain_text('Hånden er afsluttet',timeout=10000)
+            for page in pages:
+                expect(page.locator('.poker-winner-label').first).to_be_visible()
+            for width in (320,561,850,1100):
+                host.set_viewport_size({'width':width,'height':1000})
+                assert host.evaluate('document.documentElement.scrollWidth<=innerWidth'), f'Page overflow at {width}px'
+                assert host.evaluate("[...document.querySelectorAll('.poker-felt .card-hand')].every(hand=>hand.scrollWidth<=hand.clientWidth)"), f'Cards overflow at {width}px'
+            host.set_viewport_size({'width':1440,'height':1000})
             for i,page in enumerate(pages):
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                 page.screenshot(path=str(out/f'poker-{[1440,390][i]}.png'),full_page=True)

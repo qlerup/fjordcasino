@@ -59,6 +59,26 @@ def test_deadline_folds_disconnected_player():
     assert sum(p['stack'] for p in game['players'])==2000
 
 
+@pytest.mark.parametrize('action,amount,paid,bet',[('fold',None,0,0),('call',None,20,20),('raise',60,60,60),('allin',None,1000,1000)])
+def test_action_events_keep_correct_amount_before_street_or_cashout(action,amount,paid,bet):
+    game=table();engine.start(game,now=0);seat=game['turn']
+    engine.act(game,seat,action,amount,now=1)
+    event=engine.public(game,seat)['events'][-1]
+    assert event=={'id':game['revision'],'seat':seat,'action':action,'paid':paid,'bet':bet,'at':1}
+    assert 'cards' not in event
+
+
+def test_check_event_and_hand_number_survive_multiple_hands():
+    game=table((1000,1000));engine.start(game,now=0)
+    engine.act(game,game['turn'],'call',now=1)
+    engine.act(game,game['turn'],'check',now=2)
+    assert game['stage']=='flop' and game['events'][-1]['action']=='check'
+    assert game['events'][-1]['paid']==0
+    engine.act(game,game['turn'],'fold',now=3)
+    engine.start(game,now=4)
+    assert game['hand_id']==2
+
+
 @pytest.fixture
 def pair(tmp_path,monkeypatch):
     host_app=create_app({'TESTING':True,'AUTH_MODE':'local','DATA_DIR':str(tmp_path/'host')})
