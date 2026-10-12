@@ -196,9 +196,9 @@ def create_app(config=None):
                 db.execute('INSERT INTO login_attempts VALUES(?,?)',(address,time.time()))
             try:
                 if managed:
-                    result = hub_api('/api/hub/apps/authenticate', {'first_login_email':request.form.get('first_login_email',''),'username':username,'password':password},'POST')
-                    if result.get('ok') and result.get('user',{}).get('email_required'):
-                        return render_template('login.html', managed=True, email_required=True, error=result['user'].get('email_error') or 'Indtast din email ved første login og bekræft dit login.')
+                    result = hub_api('/api/hub/apps/authenticate', {'first_login_email':request.form.get('first_login_email',''),'first_login_password':request.form.get('first_login_password',''),'first_login_password_confirm':request.form.get('first_login_password_confirm',''),'username':username,'password':password},'POST')
+                    if result.get('ok') and (result.get('user',{}).get('email_required') or result.get('user',{}).get('must_change_password')):
+                        return render_template('login.html', managed=True, email_required=result['user'].get("email_required"), password_required=result['user'].get("must_change_password"), error=result['user'].get('email_error') or 'Første login: Udfyld oplysningerne og vælg din egen adgangskode.')
                     if result.get('ok') and establish_hub(result.get('user')): return redirect('/')
                 else:
                     identity = 'local:'+username.casefold()
