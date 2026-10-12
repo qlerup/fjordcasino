@@ -40,12 +40,12 @@ function loadPending(){try{const p=JSON.parse(sessionStorage.getItem(pendingKey(
 function rememberPending(){try{if(state.pending)sessionStorage.setItem(pendingKey(),JSON.stringify(state.pending));else sessionStorage.removeItem(pendingKey());}catch{/* Server idempotency still protects retries during this page visit. */}}
 function renderState(data){state.data=data;$('#balance').textContent=money(data.user.balance);updateReward(data.rewards);renderHistory();}
 const presenceTab=id();
-let rewardRemaining=900,rewardUpdated=Date.now(),rewardActive=false,presenceBusy=false;
+let rewardRemaining=900,rewardUpdated=Date.now(),rewardActive=false,presenceBusy=false,rewardError='';
 function updateReward(rewards){if(!rewards)return;rewardRemaining=rewards.remaining_seconds;rewardUpdated=Date.now();rewardActive=rewards.active;renderReward();}
-function renderReward(){const seconds=Math.max(0,Math.ceil(rewardRemaining-(rewardActive&&!document.hidden?(Date.now()-rewardUpdated)/1000:0)));$('#daily-label').textContent=document.hidden||!rewardActive?'Optjening pauset':'Næste 500 om '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');}
+function renderReward(){const seconds=Math.max(0,Math.ceil(rewardRemaining-(rewardActive&&!document.hidden?(Date.now()-rewardUpdated)/1000:0)));$('#daily-label').textContent=document.hidden?'Optjening pauset':rewardError?'Optjening afbrudt':!rewardActive?'Optjening pauset':'Næste 500 om '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');const error=$('#reward-error');error.hidden=!rewardError;error.textContent=rewardError;}
 async function presence(active){
  if(!state.data||presenceBusy)return;presenceBusy=true;
- try{const data=await api('/api/presence',{active,tab_id:presenceTab});state.data.user.balance=data.balance;$('#balance').textContent=money(data.balance);updateReward(data.rewards);}catch{rewardActive=false;renderReward();}finally{presenceBusy=false;}
+ try{const data=await api('/api/presence',{active,tab_id:presenceTab});rewardError='';state.data.user.balance=data.balance;$('#balance').textContent=money(data.balance);updateReward(data.rewards);}catch(error){rewardActive=false;rewardError=error.message||'Aktiviteten kunne ikke registreres. Kontrollér forbindelsen.';renderReward();}finally{presenceBusy=false;}
 }
 function pausePresence(){
  rewardRemaining=Math.max(0,rewardRemaining-(rewardActive?(Date.now()-rewardUpdated)/1000:0));rewardUpdated=Date.now();rewardActive=false;renderReward();
