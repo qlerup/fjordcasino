@@ -72,6 +72,36 @@ def test_multiple_tabs_do_not_multiply_rewards(tmp_path):
     assert c.get('/api/state').json['user']['balance']==10500
 
 
+@pytest.mark.parametrize('interval', [60, 90])
+def test_background_heartbeat_intervals_earn_rewards_once(tmp_path, interval):
+    now=[datetime(2026,10,13,tzinfo=timezone.utc)]
+    app=create_app({'TESTING':True,'AUTH_MODE':'local','DATA_DIR':str(tmp_path),'CLOCK':lambda:now[0]})
+    c=register(app.test_client());heartbeat(c);heartbeat(c,tab='b'*32)
+    for i in range(900//interval):
+        now[0]+=timedelta(seconds=interval)
+        result=heartbeat(c)
+        assert result.json['rewards']['active'] is True
+        heartbeat(c,tab='b'*32)
+    assert c.get('/api/state').json['user']['balance']==10500
+    heartbeat(c,False);heartbeat(c,False,tab='b'*32)
+    now[0]+=timedelta(minutes=15)
+    assert c.get('/api/state').json['user']['balance']==10500
+    assert heartbeat(c).json['balance']==10500
+
+
+def test_missing_background_heartbeat_does_not_backfill_time(tmp_path):
+    now=[datetime(2026,10,13,tzinfo=timezone.utc)]
+    app=create_app({'TESTING':True,'AUTH_MODE':'local','DATA_DIR':str(tmp_path),'CLOCK':lambda:now[0]})
+    c=register(app.test_client());heartbeat(c)
+    now[0]+=timedelta(seconds=91)
+    data=c.get('/api/state').json
+    assert data['rewards']['active'] is False
+    assert data['rewards']['remaining_seconds']==900
+    assert heartbeat(c).json['balance']==10000
+    now[0]+=timedelta(seconds=60)
+    assert heartbeat(c).json['rewards']['remaining_seconds']==840
+
+
 def test_old_accounts_reset_once_at_login_and_clear_old_round(tmp_path):
     app=create_app({'TESTING':True,'AUTH_MODE':'local','DATA_DIR':str(tmp_path)})
     c=register(app.test_client())

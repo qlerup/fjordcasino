@@ -18,6 +18,10 @@ from werkzeug.exceptions import HTTPException
 from db import connect, initialize
 import games
 
+# Background browsers may batch the 20-second heartbeat once per minute.
+# Allow that interval plus network delay, but never backfill longer outages.
+PRESENCE_TIMEOUT_SECONDS = 90
+
 
 class CasinoCookies(SecureCookieSessionInterface):
     def get_cookie_secure(self, app):
@@ -93,13 +97,13 @@ def create_app(config=None):
 
     def reward(db, uid):
         now = clock().timestamp()
-        db.execute('DELETE FROM coin_presence WHERE user_id=? AND last_seen<?', (uid,now-45))
+        db.execute('DELETE FROM coin_presence WHERE user_id=? AND last_seen<?', (uid,now-PRESENCE_TIMEOUT_SECONDS))
         active = bool(db.execute('SELECT 1 FROM coin_presence WHERE user_id=? LIMIT 1', (uid,)).fetchone())
         row = db.execute('SELECT active_seconds,last_seen FROM coin_rewards WHERE user_id=?', (uid,)).fetchone()
         elapsed = now-row['last_seen'] if row['last_seen'] is not None else 0
-        # Heartbeats arrive every 20 seconds. A missing heartbeat breaks the
-        # presence interval; time offline is never backfilled on return.
-        seconds = row['active_seconds']+(elapsed if 0 <= elapsed <= 45 else 0)
+        # Background timers can be delayed to a minute. Longer gaps break
+        # presence; time offline is never backfilled on return.
+        seconds = row['active_seconds']+(elapsed if 0 <= elapsed <= PRESENCE_TIMEOUT_SECONDS else 0)
         periods = int(seconds // 900)
         if periods:
             credit(db,uid,periods*500,'reward',f'{periods} kvarter · {periods*500:,} mønter'.replace(',', '.'))

@@ -14,6 +14,8 @@ jobs:
       - run: python -m pytest tests -q
       - run: python -m playwright install --with-deps chromium
       - run: python tests/browser_smoke.py
+      - run: python tests/browser_presence.py
+      - run: python tests/browser_background_presence.py
       - run: python tests/browser_poker.py
       - run: docker build -t fjordcasino:test .
       - name: Container readiness
