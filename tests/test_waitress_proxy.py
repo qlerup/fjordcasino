@@ -57,7 +57,7 @@ def test_https_login_and_reward_through_waitress(tmp_path, monkeypatch, configur
             result = requests.post(base + '/api/presence', headers=headers, timeout=5,
                 json={'active': True, 'tab_id': 'a' * 32})
             assert result.status_code == 200, result.text
-            assert result.json()['balance'] == (10500 if i == 45 else 10000)
+            assert result.json()['balance'] == (50500 if i == 45 else 50000)
             assert result.json()['rewards']['active'] is True
             now[0] += timedelta(seconds=20)
         headers['Origin'] = 'https://outside.invalid'

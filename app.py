@@ -21,6 +21,8 @@ import games
 # Background browsers may batch the 20-second heartbeat once per minute.
 # Allow that interval plus network delay, but never backfill longer outages.
 PRESENCE_TIMEOUT_SECONDS = 90
+WALLET_RESET_VERSION = 3
+STARTING_BALANCE = 50000
 
 
 class CasinoCookies(SecureCookieSessionInterface):
@@ -87,13 +89,13 @@ def create_app(config=None):
 
     def reset_once(db, uid):
         row = db.execute('SELECT reset_version FROM coin_rewards WHERE user_id=?', (uid,)).fetchone()
-        if row and row['reset_version'] == 2:
+        if row and row['reset_version'] >= WALLET_RESET_VERSION:
             return
-        for table in ('ledger', 'actions', 'blackjack', 'daily_rewards', 'coin_presence'):
+        for table in ('actions', 'blackjack', 'daily_rewards', 'coin_presence'):
             db.execute(f'DELETE FROM {table} WHERE user_id=?', (uid,))
-        db.execute('UPDATE users SET balance=0 WHERE id=?', (uid,))
-        credit(db,uid,10000,'welcome','Ny start · 10.000 mønter')
-        db.execute('INSERT OR REPLACE INTO coin_rewards VALUES(?,?,?,?)', (uid,2,0,None))
+        balance = db.execute('SELECT balance FROM users WHERE id=?', (uid,)).fetchone()['balance']
+        credit(db,uid,STARTING_BALANCE-balance,'reset' if row else 'welcome','Ny start · 50.000 mønter')
+        db.execute('INSERT OR REPLACE INTO coin_rewards VALUES(?,?,?,?)', (uid,WALLET_RESET_VERSION,0,None))
 
     def reward(db, uid):
         now = clock().timestamp()
@@ -109,7 +111,7 @@ def create_app(config=None):
             credit(db,uid,periods*500,'reward',f'{periods} kvarter · {periods*500:,} mønter'.replace(',', '.'))
         seconds -= periods*900
         db.execute('UPDATE coin_rewards SET active_seconds=?,last_seen=? WHERE user_id=?', (seconds,now if active else None,uid))
-        return {'amount':500,'interval_seconds':900,'awarded':periods*500,'version':2,
+        return {'amount':500,'interval_seconds':900,'awarded':periods*500,'version':WALLET_RESET_VERSION,
                 'remaining_seconds':900-seconds,'active':active}
 
     def establish(identity, username, password=None):
@@ -124,7 +126,7 @@ def create_app(config=None):
             reset_once(db, uid)
             reward(db, uid)
         session.clear()
-        session.update(uid=uid, csrf=secrets.token_urlsafe(32), login_at=time.time(), wallet_version=2)
+        session.update(uid=uid, csrf=secrets.token_urlsafe(32), login_at=time.time(), wallet_version=WALLET_RESET_VERSION)
         session.permanent = True
 
     def establish_hub(user):
@@ -151,7 +153,7 @@ def create_app(config=None):
         if request.endpoint in ('health','static','login','hub_login'): return
         with connect(path) as db:
             g.user = db.execute('SELECT id,identity,username,balance FROM users WHERE id=?', (session.get('uid'),)).fetchone()
-        if g.user and session.get('wallet_version') == 2 and time.time()-session.get('login_at',0) < 43200:
+        if g.user and session.get('wallet_version') == WALLET_RESET_VERSION and time.time()-session.get('login_at',0) < 43200:
             if managed and time.time()-session.get('hub_checked',0) > 60:
                 result = hub_api('/api/hub/apps/users')
                 if not result.get('ok'):
@@ -264,7 +266,7 @@ def create_app(config=None):
     @app.get('/api/health')
     def health():
         with connect(path) as db: db.execute('SELECT 1 FROM users LIMIT 1')
-        return jsonify(ok=True,app='fjordcasino',version='1.2.7')
+        return jsonify(ok=True,app='fjordcasino',version='1.3.0')
 
     @app.get('/')
     def index(): return render_template('index.html', username=g.user['username'])

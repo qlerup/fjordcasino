@@ -57,7 +57,7 @@ with tempfile.TemporaryDirectory() as data:
                     assert response.value.status == 200
                     assert response.value.json()['rewards']['active'] is True
                     page.wait_for_function('!presenceBusy')
-                expect(page.locator('#balance')).to_have_text('10.500')
+                expect(page.locator('#balance')).to_have_text('50.500')
                 # Chromium can finish keepalive requests after the document is
                 # gone, without reporting a response event on the original page.
                 stopped.clear()
@@ -66,7 +66,7 @@ with tempfile.TemporaryDirectory() as data:
                 with connect(app.extensions['db_path']) as db:
                     assert db.execute('SELECT count(*) FROM coin_presence').fetchone()[0] == 0
                 now[0] += timedelta(minutes=15)
-                assert page.request.get(base + '/api/state').json()['user']['balance'] == 10500
+                assert page.request.get(base + '/api/state').json()['user']['balance'] == 50500
                 assert not errors, errors
                 page.close()
             browser.close()

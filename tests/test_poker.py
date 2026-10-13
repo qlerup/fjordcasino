@@ -221,8 +221,8 @@ def join(pair):
 
 def test_two_installations_use_own_wallets_and_repeated_cashout(pair):
     _,_,host,guest,peer,_=pair;join(pair)
-    assert host.get('/api/state').json['user']['balance']==9000
-    assert guest.get('/api/state').json['user']['balance']==9000
+    assert host.get('/api/state').json['user']['balance']==49000
+    assert guest.get('/api/state').json['user']['balance']==49000
     hv=host.get('/api/poker/state').json['view']
     assert len(hv['players'])==2 and hv['host']
     assert post(host,'action',{'op':'start','revision':hv['revision']}).status_code==200
@@ -236,7 +236,7 @@ def test_two_installations_use_own_wallets_and_repeated_cashout(pair):
     host_out=post(host,'action',{'op':'leave'}).json
     assert guest_out['returned']+host_out['returned']==2000
     assert post(guest,'action',{'op':'leave'}).json=={'connected':False}
-    assert host.get('/api/state').json['user']['balance']+guest.get('/api/state').json['user']['balance']==20000
+    assert host.get('/api/state').json['user']['balance']+guest.get('/api/state').json['user']['balance']==100000
     assert peer.post('/api/poker/peer',json={'op':'view','token':'x'*32}).status_code==400
 
 
@@ -250,9 +250,9 @@ def test_lost_join_response_is_recovered_without_second_debit(pair,monkeypatch):
         return response
     monkeypatch.setattr('poker_service.requests.post',interrupted)
     assert post(guest,'connect',{'url':'http://192.168.50.10:8070','code':code}).status_code==400
-    assert guest.get('/api/state').json['user']['balance']==9000
+    assert guest.get('/api/state').json['user']['balance']==49000
     assert guest.get('/api/poker/state').json['connected']
-    assert guest.get('/api/state').json['user']['balance']==9000
+    assert guest.get('/api/state').json['user']['balance']==49000
     assert len(host.get('/api/poker/state').json['view']['players'])==2
 
 
@@ -260,7 +260,7 @@ def test_bad_invite_and_loopback_never_debit(pair):
     _,_,_,guest,_,_=pair
     assert post(guest,'connect',{'url':'http://192.168.50.10:8070','code':'x'*32}).status_code==400
     assert post(guest,'connect',{'url':'http://127.0.0.1:8070','code':'x'*32}).status_code==400
-    assert guest.get('/api/state').json['user']['balance']==10000
+    assert guest.get('/api/state').json['user']['balance']==50000
 
 
 def test_restart_preserves_indskud_and_join_token(pair):
@@ -269,7 +269,7 @@ def test_restart_preserves_indskud_and_join_token(pair):
     restarted=create_app(guest_app.config).test_client();restarted.set_cookie('fjordcasino_session',cookie)
     assert restarted.get('/api/poker/state').json['connected']
     assert post(restarted,'action',{'op':'leave'}).json['returned']==1000
-    assert restarted.get('/api/state').json['user']['balance']==10000
+    assert restarted.get('/api/state').json['user']['balance']==50000
 
 
 def test_lost_cashout_response_is_credited_once(pair,monkeypatch):
@@ -281,10 +281,10 @@ def test_lost_cashout_response_is_credited_once(pair,monkeypatch):
         return response
     monkeypatch.setattr('poker_service.requests.post',interrupted)
     assert post(guest,'action',{'op':'leave'}).status_code==400
-    assert guest.get('/api/state').json['user']['balance']==9000
+    assert guest.get('/api/state').json['user']['balance']==49000
     assert guest.get('/api/poker/state').json['returned']==1000
     assert guest.get('/api/poker/state').json=={'connected':False}
-    assert guest.get('/api/state').json['user']['balance']==10000
+    assert guest.get('/api/state').json['user']['balance']==50000
 
 
 def test_guest_cannot_start_and_stale_action_does_not_repeat(pair):
@@ -312,10 +312,10 @@ def test_full_table_refund_survives_lost_join_reply(pair,monkeypatch):
         return response
     monkeypatch.setattr('poker_service.requests.post',interrupted)
     assert post(guest,'connect',{'url':'http://192.168.50.10:8070','code':code}).status_code==400
-    assert guest.get('/api/state').json['user']['balance']==9000
+    assert guest.get('/api/state').json['user']['balance']==49000
     assert guest.get('/api/poker/state').json=={'connected':False,'returned':1000}
     assert guest.get('/api/poker/state').json=={'connected':False}
-    assert guest.get('/api/state').json['user']['balance']==10000
+    assert guest.get('/api/state').json['user']['balance']==50000
     assert len(host.get('/api/poker/state').json['view']['players'])==6
 
 
@@ -336,7 +336,7 @@ def test_upgrade_from_schema_two_does_not_repeat_wallet_reset(tmp_path):
     assert upgraded.get('/api/state').json['user']['balance']==4321
     with connect(app.extensions['db_path']) as db:
         assert db.execute('PRAGMA user_version').fetchone()[0]==3
-        assert db.execute('SELECT reset_version FROM coin_rewards').fetchone()[0]==2
+        assert db.execute('SELECT reset_version FROM coin_rewards').fetchone()[0]==3
 
 
 def test_leave_pending_join_preserves_retry_after_lost_cashout(pair,monkeypatch):
@@ -351,7 +351,7 @@ def test_leave_pending_join_preserves_retry_after_lost_cashout(pair,monkeypatch)
     assert post(guest,'connect',{'url':'http://192.168.50.10:8070','code':code}).status_code==400
     assert post(guest,'action',{'op':'leave'}).status_code==400
     assert guest.get('/api/poker/state').json=={'connected':False,'returned':1000}
-    assert guest.get('/api/state').json['user']['balance']==10000
+    assert guest.get('/api/state').json['user']['balance']==50000
 
 
 def test_waiting_cashout_player_is_not_seated_in_next_hand(pair):

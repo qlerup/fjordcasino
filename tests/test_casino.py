@@ -36,16 +36,16 @@ def test_active_rewards_and_restart(tmp_path):
     now=[datetime(2026,10,10,21,59,tzinfo=timezone.utc)]
     config={'TESTING':True,'AUTH_MODE':'local','DATA_DIR':str(tmp_path),'CLOCK':lambda:now[0]}
     app=create_app(config);client=register(app.test_client())
-    assert client.get('/api/state').json['user']['balance']==10000
+    assert client.get('/api/state').json['user']['balance']==50000
     heartbeat(client)
     for _ in range(29):
         now[0]+=timedelta(seconds=30);heartbeat(client)
-    assert client.get('/api/state').json['user']['balance']==10000
+    assert client.get('/api/state').json['user']['balance']==50000
     now[0]+=timedelta(seconds=30)
-    assert heartbeat(client).json['balance']==10500
+    assert heartbeat(client).json['balance']==50500
     cookie=client.get_cookie('fjordcasino_session').value
     restarted=create_app(config).test_client();restarted.set_cookie('fjordcasino_session',cookie)
-    assert restarted.get('/api/state').json['user']['balance']==10500
+    assert restarted.get('/api/state').json['user']['balance']==50500
 
 
 def test_offline_time_does_not_count_and_partial_time_is_saved(tmp_path):
@@ -55,11 +55,11 @@ def test_offline_time_does_not_count_and_partial_time_is_saved(tmp_path):
     for _ in range(15):now[0]+=timedelta(seconds=30);heartbeat(c)
     heartbeat(c,False)
     now[0]+=timedelta(days=3)
-    assert heartbeat(c).json['balance']==10000
+    assert heartbeat(c).json['balance']==50000
     for _ in range(15):now[0]+=timedelta(seconds=30);heartbeat(c)
-    assert c.get('/api/state').json['user']['balance']==10500
+    assert c.get('/api/state').json['user']['balance']==50500
     now[0]+=timedelta(hours=2)
-    assert heartbeat(c).json['balance']==10500
+    assert heartbeat(c).json['balance']==50500
 
 
 def test_multiple_tabs_do_not_multiply_rewards(tmp_path):
@@ -69,7 +69,7 @@ def test_multiple_tabs_do_not_multiply_rewards(tmp_path):
     for i in range(30):
         now[0]+=timedelta(seconds=30);heartbeat(c);heartbeat(c,tab='b'*32)
         if i==14:heartbeat(c,False)
-    assert c.get('/api/state').json['user']['balance']==10500
+    assert c.get('/api/state').json['user']['balance']==50500
 
 
 @pytest.mark.parametrize('interval', [60, 90])
@@ -82,11 +82,11 @@ def test_background_heartbeat_intervals_earn_rewards_once(tmp_path, interval):
         result=heartbeat(c)
         assert result.json['rewards']['active'] is True
         heartbeat(c,tab='b'*32)
-    assert c.get('/api/state').json['user']['balance']==10500
+    assert c.get('/api/state').json['user']['balance']==50500
     heartbeat(c,False);heartbeat(c,False,tab='b'*32)
     now[0]+=timedelta(minutes=15)
-    assert c.get('/api/state').json['user']['balance']==10500
-    assert heartbeat(c).json['balance']==10500
+    assert c.get('/api/state').json['user']['balance']==50500
+    assert heartbeat(c).json['balance']==50500
 
 
 def test_missing_background_heartbeat_does_not_backfill_time(tmp_path):
@@ -97,29 +97,38 @@ def test_missing_background_heartbeat_does_not_backfill_time(tmp_path):
     data=c.get('/api/state').json
     assert data['rewards']['active'] is False
     assert data['rewards']['remaining_seconds']==900
-    assert heartbeat(c).json['balance']==10000
+    assert heartbeat(c).json['balance']==50000
     now[0]+=timedelta(seconds=60)
     assert heartbeat(c).json['rewards']['remaining_seconds']==840
 
 
-def test_old_accounts_reset_once_at_login_and_clear_old_round(tmp_path):
+@pytest.mark.parametrize('old_version', [None, 2])
+@pytest.mark.parametrize('old_balance', [123, 98765])
+def test_old_accounts_reset_once_at_login_and_clear_old_round(tmp_path, old_version, old_balance):
     app=create_app({'TESTING':True,'AUTH_MODE':'local','DATA_DIR':str(tmp_path)})
     c=register(app.test_client())
     with connect(app.extensions['db_path']) as db:
-        db.execute('DELETE FROM coin_rewards')
-        db.execute('UPDATE users SET balance=123')
+        if old_version is None:
+            db.execute('DELETE FROM coin_rewards')
+        else:
+            db.execute('UPDATE coin_rewards SET reset_version=?,active_seconds=800,last_seen=0', (old_version,))
+        db.execute('UPDATE users SET balance=?', (old_balance,))
         db.execute("INSERT INTO blackjack VALUES(1,?)", (json.dumps({'status':'playing'}),))
         db.execute('PRAGMA user_version=1')
-    with c.session_transaction() as session:session.pop('wallet_version')
+    with c.session_transaction() as session:session['wallet_version']=2
     assert c.get('/api/state').status_code==401
     # Restart/migrate does not reset accounts before their next login.
     app=create_app({'TESTING':True,'AUTH_MODE':'local','DATA_DIR':str(tmp_path)})
-    with connect(app.extensions['db_path']) as db:assert db.execute('SELECT balance FROM users').fetchone()[0]==123
+    with connect(app.extensions['db_path']) as db:assert db.execute('SELECT balance FROM users').fetchone()[0]==old_balance
     c=app.test_client();c.get('/login')
     with c.session_transaction() as session:token=session['csrf']
     assert c.post('/login',data={'username':'Player','password':'test-password-only','csrf':token}).status_code==302
     data=c.get('/api/state').json
-    assert data['user']['balance']==10000 and data['blackjack'] is None and len(data['history'])==1
+    assert data['user']['balance']==50000 and data['blackjack'] is None and len(data['history'])==2
+    assert data['history'][0]['amount']==50000-old_balance
+    assert data['rewards']['remaining_seconds']==900
+    with connect(app.extensions['db_path']) as db:
+        assert db.execute('SELECT reset_version FROM coin_rewards').fetchone()[0]==3
     with connect(app.extensions['db_path']) as db:db.execute('UPDATE users SET balance=4321')
     with c.session_transaction() as session:token=session['csrf']
     c.post('/api/logout',json={},headers={'X-CSRF-Token':token})
@@ -127,6 +136,10 @@ def test_old_accounts_reset_once_at_login_and_clear_old_round(tmp_path):
     with c.session_transaction() as session:token=session['csrf']
     c.post('/login',data={'username':'Player','password':'test-password-only','csrf':token})
     assert c.get('/api/state').json['user']['balance']==4321
+    cookie=c.get_cookie('fjordcasino_session').value
+    restarted=create_app(app.config).test_client();restarted.set_cookie('fjordcasino_session',cookie)
+    assert restarted.get('/api/state').json['user']['balance']==4321
+    assert len(restarted.get('/api/state').json['history'])==2
 
 
 def test_auth_csrf_and_static(app):
@@ -162,7 +175,7 @@ def test_concurrent_duplicate_is_one_round(app):
 @pytest.mark.parametrize('game,body',[('slots',{'machine':[],'bet':30}),('slots',{'machine':'duck','bet':True}),('slots',{'machine':'duck','bet':-30}),('roulette',{'table':'classic','bets':[{'kind':[],'amount':20}]}),('roulette',{'table':'classic','bets':[{'kind':'number','value':37,'amount':20}]}),('blackjack',{'action':'start','bet':True})])
 def test_invalid_bets_do_not_change_balance(app,game,body):
     c=register(app.test_client());assert play(c,game,body).status_code==400
-    assert c.get('/api/state').json['user']['balance']==10000
+    assert c.get('/api/state').json['user']['balance']==50000
 
 
 def test_insufficient_balance_rolls_back(app):
@@ -177,7 +190,7 @@ def test_insufficient_balance_rolls_back(app):
 def test_user_isolation(app):
     one=register(app.test_client(),'First');two=register(app.test_client(),'Second')
     play(one)
-    assert two.get('/api/state').json['user']['balance']==10000
+    assert two.get('/api/state').json['user']['balance']==50000
     assert len(two.get('/api/state').json['history'])==1
 
 
@@ -205,7 +218,7 @@ def test_blackjack_hidden_cards_resume_and_no_double_payment(app,monkeypatch):
     assert finish.json['payout']==40
     assert play(c,'blackjack',{'action':'stand','round_id':'fixture-round'},'test-round-000002').json==finish.json
     assert play(c,'blackjack',{'action':'stand','round_id':'fixture-round'},'test-round-000003').status_code==400
-    assert c.get('/api/state').json['user']['balance']==10020
+    assert c.get('/api/state').json['user']['balance']==50020
 
 
 def test_blackjack_aces_and_double():
@@ -226,7 +239,7 @@ def test_hub_sso_and_revoked_membership(tmp_path,monkeypatch):
     monkeypatch.setattr(module.requests,'request',request)
     app=create_app({'TESTING':True,'AUTH_MODE':'fjordhub','FJORDHUB_URL':'http://hub.invalid','FJORDHUB_API_KEY':'synthetic-key','DATA_DIR':str(tmp_path)})
     c=app.test_client();assert c.get('/hub-login?token=synthetic').status_code==302
-    assert c.get('/api/state').json['user']['balance']==10000
+    assert c.get('/api/state').json['user']['balance']==50000
     users.clear()
     with c.session_transaction() as session: session['hub_checked']=0
     assert c.get('/api/state').status_code==401

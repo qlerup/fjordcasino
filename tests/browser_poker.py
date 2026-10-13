@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory(prefix='casino-poker-test-') as data:
                 context=browser.new_context(viewport={'width':width,'height':1000});contexts.append(context);page=context.new_page();pages.append(page)
                 page.on('pageerror',lambda e:errors.append(str(e)))
                 page.goto(urls[i]+'/login');page.get_by_label('Brugernavn').fill(['Host','Guest'][i]);page.get_by_label('Adgangskode').fill('fixture-only-password');page.get_by_role('button',name='Opret en spiller').click()
-                expect(page.locator('#balance')).to_have_text('10.000')
+                expect(page.locator('#balance')).to_have_text('50.000')
                 page.locator('.sidebar [data-nav="poker"]').click()
                 expect(page.get_by_role('button',name='Opret bord')).to_be_visible()
             host,guest=pages
@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory(prefix='casino-poker-test-') as data:
             host.locator('.poker-sharing summary').click()
             expect(host.locator('#poker-share-code')).to_be_visible()
             host.locator('.poker-sharing summary').click()
-            expect(host.locator('#balance')).to_have_text('9.000');expect(guest.locator('#balance')).to_have_text('9.000')
+            expect(host.locator('#balance')).to_have_text('49.000');expect(guest.locator('#balance')).to_have_text('49.000')
             host.get_by_role('button',name='Start næste hånd').click()
             expect(host.locator('.poker-felt')).to_contain_text('Før floppet')
             for page,minimum in ((host,90),(guest,58)):
@@ -121,7 +121,7 @@ with tempfile.TemporaryDirectory(prefix='casino-poker-test-') as data:
             for page in pages:
                 page.get_by_role('button',name='Forlad bordet').click();expect(page.get_by_role('button',name='Opret bord')).to_be_visible()
             balances=[p.request.get(url+'/api/state').json()['user']['balance'] for p,url in zip(pages,urls)]
-            assert sum(balances)==20000
+            assert sum(balances)==100000
             assert not errors,errors
             for context in contexts:context.close()
             browser.close()

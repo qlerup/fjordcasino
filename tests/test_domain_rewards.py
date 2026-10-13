@@ -37,5 +37,5 @@ def test_domain_login_earns_full_quarter_reward(tmp_path,monkeypatch,login_mode,
             headers={**headers,'Origin':origin,'X-CSRF-Token':csrf},json={'active':True,'tab_id':'a'*32})
         assert result.status_code==200,result.text
         assert result.json['rewards']['active'] is True
-        assert result.json['balance']==(10500 if i==45 else 10000)
+        assert result.json['balance']==(50500 if i==45 else 50000)
         now[0]+=timedelta(seconds=20)
