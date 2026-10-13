@@ -27,6 +27,8 @@ Appcontaineren kører som UID 10001 uden Linux capabilities. En separat init-con
 
 ## Data, opdatering og backup
 
+Ved domæneadgang i FjordHub-tilstand konfigurerer `wsgi.py` også Waitress til at acceptere ét `X-Forwarded-Proto`-led. Dermed bevares HTTPS-oplysningen frem til Flask, så login og optjening ikke afvises som forespørgsler fra en anden origin. Andre proxyheaders forbliver fjernet af Waitress. Ændringer i `wsgi.py` kræver et nyt container-build; en genindlæsning af browseren er ikke tilstrækkelig.
+
 `DATA_DIR` indeholder `casino.sqlite3`, eventuelle WAL/SHM-filer og `session.key`. Alle saldi og igangværende hænder overlever genstart. Sessionsnøglen skal bevares. Ved filbackup: stop appen, kopiér hele datamappen, start appen igen. Ingen produktionsdata eller nøgler må lægges i Git.
 
 ```sh
