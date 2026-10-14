@@ -154,15 +154,23 @@ def create_app(config=None):
         with connect(path) as db:
             g.user = db.execute('SELECT id,identity,username,balance FROM users WHERE id=?', (session.get('uid'),)).fetchone()
         if g.user and session.get('wallet_version') == WALLET_RESET_VERSION and time.time()-session.get('login_at',0) < 43200:
-            if managed and time.time()-session.get('hub_checked',0) > 60:
+            if managed and (time.time()-session.get('hub_checked',0) > 5 or request.endpoint in ('api_hub_access', 'hub_email_update')):
                 result = hub_api('/api/hub/apps/users')
                 if not result.get('ok'):
                     return jsonify(error='FjordHub kunne ikke bekræfte din adgang.'), 503
                 uid = int(g.user['identity'].split(':')[1])
-                if not any(u.get('id') == uid and not u.get('must_change_password') for u in result.get('items',[])):
+                member = next((u for u in result.get('items',[]) if u.get('id') == uid and not u.get('must_change_password')), None)
+                if member is None:
                     g.user = None; session.clear()
-                else: session['hub_checked'] = time.time()
-            if g.user: return
+                else:
+                    session['hub_checked'] = time.time()
+                    session['hub_email_required'] = bool(member.get('email_required'))
+                    g.hub_email_member = member
+            if g.user:
+                if managed and session.get('hub_email_required') and request.endpoint not in ('hub_email_update', 'logout'):
+                    from hub_email import required_response
+                    return required_response()
+                return
         session.pop('uid',None)
         if request.path.startswith('/api/'):
             return jsonify(error='Log ind for at spille.', authenticated=False), 401
@@ -174,6 +182,19 @@ def create_app(config=None):
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer' if request.endpoint == 'hub_login' else 'same-origin'
         response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+        return response
+
+    @app.get('/api/auth/access')
+    def api_hub_access():
+        return jsonify(ok=True, authenticated=bool(g.user))
+
+    @app.post('/api/auth/email')
+    def hub_email_update():
+        from hub_email import submit_email
+        if not managed:
+            return jsonify(ok=False, error='Kræver FjordHub-login.'), 403
+        response = submit_email(g.hub_email_member, hub_api)
+        session['hub_checked'] = 0
         return response
 
     @app.errorhandler(games.GameError)
