@@ -1,9 +1,9 @@
-# FjordCasino logo- og ikonpakke
+# FjordCasino logo and icon package
 
-Samme visuelle familie som FjordHub, FjordBudget og FjordLens: afrundet, dyb grøn appflise med blanke kanter, gyldne jetoner, spillekort og en and præget i den forreste jeton.
+The same visual family as FjordHub, FjordBudget and FjordLens: a rounded deep-green tile with polished edges, golden chips, playing cards and a duck embossed on the front chip.
 
-`icon-master.png` er originalen genereret med imagegen med de tre apps som stilreferencer. Den komplette illustration og dens gennemsigtighed bevares i eksporterne. SVG-filerne indlejrer rasteroriginalen; de er ikke håndtegnede vektororiginaler.
+`icon-master.png` is the original generated with imagegen using the three apps as style references. Exports preserve the complete illustration and transparency. SVG files embed the raster original rather than being hand-drawn vector originals.
 
-`exports.json` indeholder alle 27 leverancer: PNG-ikoner fra 16 til 1024 px, ICO, ICNS, Apple-touch-ikon, maskable ikoner, SVG-mark, vandrette og stablede logoer med lys/mørk tekst samt socialkort på 1200 × 630 px. `light` betyder lys tekst til mørk baggrund; `dark` er mørk tekst til lys baggrund.
+`exports.json` lists all 27 deliverables: PNG icons from 16 to 1024 px, ICO, ICNS, Apple touch icon, maskable icons, SVG mark, horizontal/stacked logos with light/dark text, and 1200 × 630 social cards. `light` means light text for dark backgrounds; `dark` means dark text for light backgrounds.
 
-Genbyg med `python scripts/build_brand.py` (Pillow og Playwright Chromium). Farver: dyb grøn `#143c35`, champagneguld `#c7ad74`, lys tekst `#edf3f7`. Skrift til logoerne: Arial Bold, som i de andre apps' eksportpipeline. Hold frirum omkring logoet på mindst en tiendedel af ikonets bredde. Brug maskable-filerne, når en platform selv beskærer ikonet.
+Rebuild with `python scripts/build_brand.py` using Pillow and Playwright Chromium. Colors: deep green `#143c35`, champagne gold `#c7ad74`, light text `#edf3f7`. Wordmarks use Arial Bold, matching the suite's export pipeline. Leave clear space at least one tenth of the icon width. Use maskable exports where a platform crops the icon.

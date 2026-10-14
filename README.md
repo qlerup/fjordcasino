@@ -1,19 +1,23 @@
 # FjordCasino
 
-Et dansk hyggekasino til FjordHub med virtuelle mønter. Ingen indbetaling, køb eller udbetaling af penge.
+A casual FjordHub casino with virtual coins, without real-money deposits, purchases or withdrawals. The interface currently uses Danish labels.
 
-- Andedammen, Stjernestøv og Frugtfesten: tre spilleautomater med tre vandrette gevinstlinjer.
-- Roulette Royale og Anderoulette: europæisk roulette med ét nul.
-- Blackjack Club: seks kortspil, dealer står på alle 17, blackjack 3:2, mulighed for fordobling. Ingen split eller forsikring.
-- Texas Hold’em mod 2–6 venner, også på tværs af installationer. Indskud og gevinster bruger den almindelige saldo.
-- 50.000 startmønter og 500 for hver 15 minutters tilstedeværelse med kasinoet åbent, også i en baggrundsfane eller en minimeret browser. Delvise kvarterer gemmes; offline tid giver ingen optjening. Flere faner tæller ikke dobbelt.
-- Personlig saldo, seneste 50 bevægelser og gemt blackjackhånd. Spil afgøres og afregnes på serveren, i én databasetransaktion. Runde-id beskytter mod dobbelt afregning.
+## Games and rewards
 
-## FjordHub
+- Andedammen, Stjernestøv and Frugtfesten: slots with three horizontal winning lines.
+- Roulette Royale and Anderoulette: European single-zero roulette.
+- Blackjack Club: six decks, dealer stands on all 17s, blackjack pays 3:2, doubling; no split or insurance.
+- Texas Hold'em with 2–6 friends, including across installations, using ordinary wallets for buy-ins/winnings.
+- 50,000 starting coins and 500 per 15 minutes with the casino open, including background tabs/minimized browsers. Partial periods persist, offline time earns nothing and tabs do not multiply rewards.
+- Personal wallet, last 50 movements and saved blackjack hand. Server-side transactional settlement and round IDs prevent duplicate settlement.
 
-Opdater FjordHubs appkatalog og installér **FjordCasino**. Standardport er **8070**. Tildel brugerne adgang i FjordHub. Appen bruger `docker-compose.fjordhub.yml`, og FjordHub leverer `FJORDHUB_URL` og `FJORDHUB_API_KEY`. Login og brugeradgang styres centralt; appen ændrer ikke FjordHub-konti.
+## Install through FjordHub
 
-## Selvstændig installation
+Install **FjordCasino**, default port **8070**, and assign access in Hub. `docker-compose.fjordhub.yml` receives Hub's integration URL/key. Shared login, SSO and first-login email/password setup use the central account.
+
+Hub administrators can require an email confirmation/update. Existing logins receive a mandatory form when opening or returning to the app. Saving a valid, unique address clears the requirement across updated apps without replacing the account/wallet. Update both Hub and Casino. Current membership is rechecked during sessions.
+
+## Standalone deployment
 
 ```sh
 cp .env.example .env
@@ -21,61 +25,57 @@ docker compose up -d --build
 docker compose logs --tail=100 fjordcasino
 ```
 
-Åbn `http://localhost:8070`. Standalone bruger lokal registrering; brug FjordHub-udgaven, hvis kun inviterede brugere skal kunne logge ind. HTTP virker på lokalnettet. Ved offentlig adgang skal en betroet reverse proxy levere HTTPS. I FjordHub-tilstand stoles på ét `X-Forwarded-Proto`-led; backendporten bør derfor kun være tilgængelig fra den betroede proxy/lokalnettet. Forwarded host og client-IP stoles ikke på. Sessionscookies er HttpOnly/SameSite=Lax og Secure ved HTTPS.
+Open `http://localhost:8070`. Standalone permits local registration; use Hub-managed access for an invited-user deployment. HTTP works on trusted LANs; public access requires HTTPS.
 
-Appcontaineren kører som UID 10001 uden Linux capabilities. En separat init-container indstiller ejerskab og adgang på selve datamappen. Brug en dedikeret lokal mappe (SQLite bør ikke placeres på NFS/SMB).
+In managed mode, Flask and Waitress accept one `X-Forwarded-Proto` hop, preserving HTTPS login/reward origins. Other forwarded host/client-IP headers remain untrusted. Restrict the backend to a trusted proxy/LAN. Cookies are HttpOnly/SameSite=Lax and Secure under HTTPS. Proxy-handling changes require rebuilding, not just refreshing the browser.
 
-## Data, opdatering og backup
+The container runs as UID 10001 without Linux capabilities. An init container configures the dedicated data directory. Keep SQLite on local disk, not NFS/SMB.
 
-Ved domæneadgang i FjordHub-tilstand konfigurerer `wsgi.py` også Waitress til at acceptere ét `X-Forwarded-Proto`-led. Dermed bevares HTTPS-oplysningen frem til Flask, så login og optjening ikke afvises som forespørgsler fra en anden origin. Andre proxyheaders forbliver fjernet af Waitress. Ændringer i `wsgi.py` kræver et nyt container-build; en genindlæsning af browseren er ikke tilstrækkelig.
+## Poker with friends
 
-`DATA_DIR` indeholder `casino.sqlite3`, eventuelle WAL/SHM-filer og `session.key`. Alle saldi og igangværende hænder overlever genstart. Sessionsnøglen skal bevares. Ved filbackup: stop appen, kopiér hele datamappen, start appen igen. Ingen produktionsdata eller nøgler må lægges i Git.
+1. Update both installations to a compatible poker release (at least 1.2.0), log in and open Poker.
+2. Create a table; the host reserves 1,000 wallet coins.
+3. Check the address above the friend code. Use the host's reachable HTTPS origin for remote players or its LAN address on the same network.
+4. Share the complete `FC1.…` code. A friend connects from their installation and reserves their own 1,000 coins locally.
+5. Start a hand: 2–6 seats, 10/20 blinds, check/call/fold/raise/all-in, best-five-of-seven evaluation, side pots and split pots. After 60 seconds without action, refresh applies an automatic fold.
+6. Leave to return remaining chips to your wallet. Leaving during a hand folds and waits for settlement. The next player can start hands if the host player leaves.
+
+Both installations show action feedback and the winning hand. Made combinations are highlighted without unrelated kickers; celebrations remain until the next hand. Refunded uncalled bets are not winnings. Withdrawing players stay out of subsequent hands.
+
+The guest connects outbound to the host's `/api/poker/peer`, so it needs no public inbound address. LAN addresses require the same network/routed VPN. Proxy rules must permit peer requests. Authentication uses the secret friend code and player tokens, not Hub login.
+
+Buy-ins, table state and settlement receipts persist. Lost join/withdraw responses can be retried without duplicate debit/payout; Retrieve existing connection resumes a pending buy-in. Full tables refund with a receipt. If the host remains unreachable, escrow stays reserved until settlement can be confirmed. Only use trusted hosts: the host owns cards/results; this is not a trustless or certified poker network. Loopback, link-local, embedded credentials and redirects are rejected, while private LAN destinations are supported.
+
+## One-time wallet migration in 1.3.0
+
+The first login after that upgrade sets each wallet to exactly 50,000, clears old round IDs/unfinished blackjack and resets partial reward time. Account, password and history remain, with the adjustment recorded. Poker tables/escrow remain. A per-player marker prevents repeated resets on later logins or updates. Old sessions sign in again. Back up first if the old state must remain recoverable.
+
+Presence heartbeats run every 20 seconds, including hidden tabs. The server tolerates 90 seconds because browsers throttle timers. Closing/leaving pauses presence; longer gaps earn nothing. Suspended tabs or sleeping computers cannot earn indefinitely. Presence does not prove a person is watching the screen.
+
+## Data, updates and backup
+
+`DATA_DIR` holds `casino.sqlite3`, WAL/SHM files and `session.key`. Preserve the complete directory/key. Stop before file backup. Schema version 3 creates tables without erasing data. Rollback needs compatible code/backup and loses rounds since that backup. Ordinary `docker compose down` preserves the bind mount.
 
 ```sh
 docker compose stop fjordcasino
-# Tag en kopi af hele DATA_DIR her.
+# Back up the complete DATA_DIR.
 docker compose start fjordcasino
 git pull --ff-only
 docker compose up -d --build
 ```
 
-FjordHub-installationer opdateres gennem FjordHub. Skemaversion 3 opretter tabeller uden at slette data. Ved rollback bruges en tidligere kodeversion sammen med dens kompatible backup; genindlæsning af en backup mister runder spillet siden backup. `docker compose down` bevarer bind-mappens data.
+Managed deployments update through Hub. Never commit production data or secrets.
 
-## Lokal udvikling og test
-
-Python 3.13 anbefales. Installer `requirements.txt` og `requirements-dev.txt`. `tzdata` leverer tidszoner også på Windows.
+## Development and tests
 
 ```sh
 python -m pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest tests -q
 python -m playwright install chromium
 python tests/browser_smoke.py
+python tests/browser_poker.py
 ```
 
-Start lokalt med `AUTH_MODE=local python app.py` (PowerShell: `$env:AUTH_MODE='local'; python app.py`). Udviklingsserveren binder kun loopback på port 8070. Docker bruger Waitress på port 8080. `/api/health` kontrollerer databaseadgang.
+Python 3.13 is recommended; `tzdata` supports Windows. Local development: `AUTH_MODE=local python app.py`, or `$env:AUTH_MODE='local'; python app.py` in PowerShell, on loopback port 8070. Docker runs Waitress on 8080; `/api/health` checks database access.
 
-Browserprøverne starter deres egen server og bruger midlertidige data og syntetiske spillere. Ingen tests kontakter en rigtig FjordHub eller spiller med rigtige konti. GitHub Actions kører tests samt container-build og sundhedstjek.
-
-## Engangsnulstilling i 1.3.0
-
-Ved første login efter denne opdatering sættes hver spillers saldo til præcis 50.000, uanset den tidligere saldo. Gamle runde-id’er og igangværende blackjackhånd ryddes, og kvarteroptjeningen starter forfra. Konto, adgangskode og spilhistorik bevares; saldoændringen bogføres i historikken. Pokerborde og reserverede pokerindskud bevares. En permanent markering pr. spiller forhindrer yderligere nulstillinger ved login, genstart eller senere opdateringer. Gamle sessioner skal logge ind igen. Databasen røres først for den enkelte spiller ved login. Tag backup før opdateringen, hvis den gamle saldo/historik skal bevares.
-
-Tilstedeværelse registreres med et signal fra hver åben fane hvert 20. sekund, også når fanen er skjult. Serveren accepterer op til 90 sekunder mellem signalerne, da baggrundsfaners timere kan blive begrænset til én gang i minuttet. Ved lukning eller navigation væk pauses fanen. Udebliver signaler i mere end 90 sekunder, medregnes hullet ikke. En fane, som browseren suspenderer helt, eller en computer i dvale, kan derfor ikke fortsætte optjeningen. Det er browserbaseret tilstedeværelse og kan ikke bevise, at et menneske sidder ved skærmen.
-
-
-## Poker med venner
-
-1. Begge installationer opdateres til mindst 1.2.0. Log ind og vælg **Poker**.
-2. Værten vælger **Opret bord**. 1.000 mønter reserveres fra værtens saldo.
-3. Kontrollér adressen over vennekoden. Brug værtens offentlige HTTPS-domæne, når en ven er udenfor lokalnettet. På samme netværk bruges for eksempel `http://192.168.1.110:8070`.
-4. Del hele `FC1.…`-vennekoden. Vennen indsætter den i sin egen installation og vælger **Forbind**. Hans 1.000 mønter reserveres på hans installation.
-5. Værten starter hånden. Der er 2–6 pladser, blinds 10/20, check, kald, fold, hæv og all-in. Bedste fem af syv kort vinder; sidepuljer og delte puljer understøttes. Manglende handling i 60 sekunder giver automatisk fold, når bordet opdateres.
-6. Vælg **Forlad bordet** for at føre dine resterende jetoner tilbage til din egen saldo. Under en hånd foldes dine kort, og afregning afventer afslutningen. Hvis værten forlader bordet, overtager næste spiller retten til at starte hænder.
-
-Din makkers installation behøver ingen offentlig adresse, når din installation er den tilgængelige vært. Hans server forbinder ud til din via `/api/poker/peer`. Ingen indgående forbindelse til hans installation er nødvendig. Værtens adresse skal kunne nås fra gæstecontaineren; en privat LAN-adresse virker kun på samme net eller gennem en eksisterende VPN. DNS/HTTPS og eventuelle adgangsregler hos din reverse proxy skal tillade denne API-adgang. Der kræves ikke FjordHub-login på peer-endpointet; adgang styres af bordets hemmelige vennekode og separate spillertokens.
-
-Indskud, spilleadgang, bordets tilstand og afregningskvitteringer gemmes i SQLite. Et mistet svar ved tilslutning eller tilbageførsel kan efterprøves uden nyt indskud eller dobbelt udbetaling. **Hent eksisterende forbindelse** genoptager et afventende indskud. Et fuldt bord returnerer indskuddet med en gemt kvittering. Ved varig utilgængelighed af værten forbliver indskuddet reserveret, indtil bordet kan kontaktes igen; det refunderes ikke uden en afregningskvittering.
-
-Spil kun med en betroet vært. Værtsinstallationen har serverens kort og beregner resultater; dette er et vennebord med virtuelle mønter, ikke et tillidsløst eller certificeret pokernetværk. Peer-adresser med loopback, link-local, indlejrede loginoplysninger eller redirects accepteres ikke. Private LAN-adresser er med vilje tilladt.
-
-Pokerprøven `python tests/browser_poker.py` starter to uafhængige installationer på maskinens LAN-adresse, spiller en hel hånd i to Chromium-kontekster og verificerer begge saldi. Prøvedata fjernes bagefter. Liveforbindelsen mellem jeres to konkrete installationer er endnu ikke efterprøvet.
+Browser tests use temporary synthetic players. The poker test starts two LAN-address fixtures and verifies a complete hand/balances, rather than claiming every deployed server pair has been checked. Actions runs tests, builds and health checks. See [branding/README.md](branding/README.md) for artwork.
